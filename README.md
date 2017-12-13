@@ -13,10 +13,10 @@ It might be necessary to disable the cpufreq governor "intel_pstate" (setting "i
 
 Compilation macros can be set in the file "powercap/macros.h".
 
-**DEBUG_HEURISTICS**: if defined sets the software in debug mode during which runtime information is printed to standard output;
-**DEBUG_OVERHEAD**: if defined prints the time interval spent in different portions of code that perform operations of measurement, startup or configuration of data necessary for the proper execution of the presented power capping strategy, but that are not necessary for the unmanaged execution of applications;
-**LOCK_BASED_TRANSACTIONS**: if defined changes the synchronization paradigm used by the STAMP applications from transactions to coarse-grained locking implemented with spinlocks; 
-**TIMELINE_PLOT**: if defined produces in the working directory a file that shows for each step (either explorative or exploitative) the selected configuration of threads and P-state, the average power consumption, the value of the powercap at the given time and the average throughput. 
+* **DEBUG_HEURISTICS**: if defined sets the software in debug mode during which runtime information is printed to standard output;
+* **DEBUG_OVERHEAD**: if defined prints the time interval spent in different portions of code that perform operations of measurement, startup or configuration of data necessary for the proper execution of the presented power capping strategy, but that are not necessary for the unmanaged execution of applications;
+* **LOCK_BASED_TRANSACTIONS**: if defined changes the synchronization paradigm used by the STAMP applications from transactions to coarse-grained locking implemented with spinlocks; 
+* **TIMELINE_PLOT**: if defined produces in the working directory a file that shows for each step (either explorative or exploitative) the selected configuration of threads and P-state, the average power consumption, the value of the powercap at the given time and the average throughput. 
 
 
 ### Compile
