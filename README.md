@@ -1,6 +1,6 @@
 # EPADS: Exploration-based Power-capping for Applications with Diverse Scalability
 
-##Introduction
+## Introduction
 
 The software in this repository defines a power capping solution that maximizes application performance while operating within power consumption constraints. This solution is based on the results of a preliminary analysis that shows how the throughput curve, when varying the number of cores assigned to a multithreaded applications, preserves the same shape, and the same value for the maximum, at different performance states (P-state). Based on this result, the software presented in this repository performs an online exploration of the configurations of P-state and assigned cores/threads with the goal of adaptively allocating the power budget (power cap) to maximize application performance. The code in this repository was partially exploited to produce all the experimental results presented in the scientific paper "Adaptive Performance Optimization under Power Constraint in Multi-thread Applications with Diverse Scalability", presented at the 9th ACM/SPEC International Conference on Performance Engineering (ICPE 2018). Further indications on how to replicate and validate the results presented in the paper are given below. 
 
