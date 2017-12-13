@@ -1,15 +1,15 @@
 # EPADS: Exploration-based Power-capping for Applications with Diverse Scalability
 
-#### Introduction
+### Introduction
 
 The software in this repository defines a power capping solution that maximizes application performance while operating within power consumption constraints. This solution is based on the results of a preliminary analysis that shows how the throughput curve, when varying the number of cores assigned to a multithreaded applications, preserves the same shape, and the same value for the maximum, at different performance states (P-state). Based on this result, the software presented in this repository performs an online exploration of the configurations of P-state and assigned cores/threads with the goal of adaptively allocating the power budget (power cap) to maximize application performance. The code in this repository was partially exploited to produce all the experimental results presented in the scientific paper "Adaptive Performance Optimization under Power Constraint in Multi-thread Applications with Diverse Scalability", presented at the 9th ACM/SPEC International Conference on Performance Engineering (ICPE 2018). Further indications on how to replicate and validate the results presented in the paper are given below. 
 
-##Requirements
+### Requirements
 
 This software is developed for Linux operating systems in c programming language. The minimum kernel version required is system specific since it relies on the "powercap" Linux subsystem which is supported by different processors since different kernel releases. The "powercap" framework is only supported by Intel processors following the Sandy Bridge architecture. This facility is only used to obtaining energy consumption measurements with low overhead and it is never exploited to set hardware-level power constraints.  
 It might be necessary to disable the cpufreq governor "intel_pstate" (setting "intel_pstate=disable" in the kernel boot line) since it doesn't support user space P-state management. 
 
-##Compilation Macros
+### Compilation Macros
 
 - DEBUG_HEURISTICS: if defined sets the software in debug mode during which runtime information is printed to standard output;
 - DEBUG_OVERHEAD: if defined prints the time interval spent in different portions of code that perform operations of measurement, startup or configuration of data necessary for the proper execution of the presented power capping strategy, but that are not necessary for the unmanaged execution of applications
@@ -17,11 +17,11 @@ It might be necessary to disable the cpufreq governor "intel_pstate" (setting "i
 - TIMELINE_PLOT: if defined produces in the working directory a file that shows for each step (either explorative or exploitative) the selected configuration of threads and P-state, the average power consumption, the value of the powercap at the given time and the average throughput. 
 Compilation macros can be set in the file "powercap/macros.h".
 
-##Compile
+### Compile
 
 You can use "compile.sh" to compile the power capping solution, TinySTM and the STAMP benchmark suite. 
 
-##Configuration file*
+### Configuration file*
 
 The configuration file named "hope_config.txt" is loaded at the start of the execution and defines different parameters read at runtime. 
 The semantics of these parameters is presented below.
@@ -41,11 +41,11 @@ EXTRA_RANGE_PERCENTAGE: used only when HEURISTIC_MODE is set to 10, it defines t
 WINDOW_SIZE: used only when HEURISTIC_MODE is set to 10, it defines the lenght in steps of the window during which the average power consumption should be as close as possible to POWER_LIMIT;
 HYSTERESIS: used only when HEURISTIC_MODE is set to 10, it defines the amount of hysteresis (in percentage) that should be considered when deciding the next step in a window;
 
-##Run
+### Run
 
 To run an application please refer to the "README" file included in the application path. The configuration file (hope_config.txt) must be present in the working directory of the application. To avoid duplicating the same configuration for different applications, we suggest to execute applications from the root folder of these repository exploiting the provided "hope_config.txt" modified as necessary. 
 
-##Code organization
+### Code organization
 
 The software that constitutes the power capping solution is in the "powercap/" folder. In "powercap.h" and "powercap.c" resides the code that accounts for data structures and global variables initialization, DVFS and thread management, statistics gathering, time and energy sampling. The code in "heuristics.c" implements different exploration strategies based on either a power consumption limit or energy-per-transaction limit. 
 The code in "stats_t.h" presents the struct used for statistics gathering. 
@@ -56,7 +56,7 @@ The code in "bench/" contains the .sh scripts used for testing.
 The code in "utils/ contains multiple utility programs used to parse test results. 
 The code in "rapl-power/" was used to obtain energy measurements in systems not supporting the "powercap" linux framework and is currently deprecated   
 
-##Adaptive Performance Optimization under Power Constraint in Multi-thread Applications with Diverse Scalability
+### Adaptive Performance Optimization under Power Constraint in Multi-thread Applications with Diverse Scalability
 
 In the paper presented in the 9th ACM/SPEC International Conference on Performance Engineering (ICPE 2018), 4 different exploration strategies are evaluated and compared. The implementation of the decision trees used by those exploration strategies can be found in "powercap/heuristics.c". The relations between the HEURISTIC_MODE values, the functions in "powercap/heuristics.c" and the strategies referred in the paper are the following: 
 
