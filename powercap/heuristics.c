@@ -1344,9 +1344,7 @@ void heuristic_two_step_stateful(double throughput, double  abort_rate, double p
 					heuristic_power(throughput, abort_rate, power, energy_per_tx);
 					break;
 				case 8: // Fixed number of threads at p_state static_pstate set in hope_config.txt
-					best_pstate = current_pstate;
-					best_threads = active_threads;
-					stop_searching();
+					stopped_searching = 1;
 					break;
 				case 9:	// Dynamic heuristic0
 					dynamic_heuristic0(throughput, abort_rate, power, energy_per_tx);
