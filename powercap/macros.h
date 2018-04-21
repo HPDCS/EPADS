@@ -2,7 +2,8 @@
 #define NET_STATS
 #define DEBUG_HEURISTICS
 #define NO_RAPL
+#define NO_BOOST
 //#define DEBUG_OVERHEAD
-#define REDUCED_VERBOSITY
+//#define REDUCED_VERBOSITY
 //#define LOCK_BASED_TRANSACTIONS
 //#define TIMELINE_PLOT

@@ -154,7 +154,7 @@
 
 
 	// Executed inside stm_init
-	inline void check_running_array(int threadId){
+	void check_running_array(int threadId){
 		
 		while(running_array[threadId] == 0){
 			pause();
@@ -162,7 +162,7 @@
 	}
 
 	// Used by the heuristics to tune the number of active threads 
-	inline int wake_up_thread(int thread_id){
+	int wake_up_thread(int thread_id){
 		
 		if( running_array[thread_id] == 1){
 			printf("Waking up a thread already running\n");
@@ -176,7 +176,7 @@
 	}
 
 	// Used by the heuristics to tune the number of active threads 
-	inline int pause_thread(int thread_id){
+	int pause_thread(int thread_id){
 
 		if( running_array[thread_id] == 0 ){
 			
@@ -382,7 +382,7 @@
 	}
 
 	// Function used to set the number of running threads. Based on active_threads and threads might wake up or pause some threads 
-	inline void set_threads(int to_threads){
+	void set_threads(int to_threads){
 
 		#ifdef DEBUG_OVERHEAD
 			long time_heuristic_start;
@@ -414,7 +414,7 @@
 	}
 
 	// Initialization of global variables 
-	inline void init_global_variables(){
+	void init_global_variables(){
 
 		#ifdef DEBUG_HEURISTICS
 			printf("Initializing global variables\n");
@@ -508,11 +508,15 @@
 
 
 	// Used to either enable or disable boosting facilities such as TurboBoost. Boost is disabled whenever the current config goes out of the powercap 
-	inline void set_boost(int value){
+	void set_boost(int value){
 
 		int i;
 		char fname[64];
 		FILE* boost_file;
+
+		#ifdef NO_BOOST
+			return;
+		#endif
 
 		#ifdef DEBUG_OVERHEAD
 			long time_heuristic_start;
@@ -538,7 +542,7 @@
 			printf("DEBUG OVERHEAD - inside set_boost() %lf microseconds\n", time_heuristic_microseconds);
 		#endif 
 		
-		return 0;
+		return;
 	}
 
 #endif/* ! STM_HOPE */
