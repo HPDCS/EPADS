@@ -320,6 +320,9 @@
 	// Returns energy consumption of package 0 cores in micro Joule
 	long get_energy(){
 
+		#ifdef NO_RAPL
+		return 0; 
+		#endif
 
 		#ifdef DEBUG_OVERHEAD
 			long time_heuristic_start;
