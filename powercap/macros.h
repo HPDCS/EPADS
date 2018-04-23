@@ -1,6 +1,6 @@
 #define STM_HOPE
 #define NET_STATS
-#define DEBUG_HEURISTICS
+//#define DEBUG_HEURISTICS
 #define NO_RAPL
 #define NO_BOOST
 //#define DEBUG_OVERHEAD

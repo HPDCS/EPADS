@@ -1,0 +1,4 @@
+Threads: 21	Elapsed time: 65.849324	Commits: 23428146	Aborts: 145527941	Net_runtime: 0.000000	Net_throughput: -nan	Net_power: -nan	Net_commits: 0	Net_aborts: 0	Net_error: 0.000000	P-state: -1	Best-threads: -1	Steps: 0	Throughput: 355784.153597
+Threads: 21	Elapsed time: 61.122797	Commits: 23428146	Aborts: 141910640	Net_runtime: 0.000000	Net_throughput: -nan	Net_power: -nan	Net_commits: 0	Net_aborts: 0	Net_error: 0.000000	P-state: -1	Best-threads: -1	Steps: 0	Throughput: 383296.366416
+Threads: 21	Elapsed time: 61.754622	Commits: 23428146	Aborts: 141929341	Net_runtime: 0.000000	Net_throughput: -nan	Net_power: -nan	Net_commits: 0	Net_aborts: 0	Net_error: 0.000000	P-state: -1	Best-threads: -1	Steps: 0	Throughput: 379374.777917
+Threads: 21	Elapsed time: 63.022357	Commits: 23428146	Aborts: 141963092	Net_runtime: 0.000000	Net_throughput: -nan	Net_power: -nan	Net_commits: 0	Net_aborts: 0	Net_error: 0.000000	P-state: -1	Best-threads: -1	Steps: 0	Throughput: 371743.411704
