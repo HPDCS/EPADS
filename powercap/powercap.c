@@ -273,6 +273,27 @@
 		#endif
 	}
 
+
+	void init_model_matrices(){
+
+		int i;
+
+		// Allocate the matrices
+		power_model = (double**) malloc(sizeof(double*) * (max_pstate+1));
+		throughput_model = (double**) malloc(sizeof(double*) * (max_pstate+1)); 
+ 
+		for (i = 0; i <= max_pstate; i++){
+  	   		power_model[i] = (double *) malloc(sizeof(double) * (total_threads));
+  	   		throughput_model[i] = (double *) malloc(sizeof(double) * (total_threads));
+  	   	}
+
+  	   	// Init first row with all zeros 
+  	   	for(i = 0; i <= max_pstate; i++){
+  	   		power_model[i][0] = 0;
+  	   		throughput_model[i][0] = 0;
+  	   	}
+	}
+
 	void load_config_file(){
 		
 		// Load config file 
@@ -308,7 +329,7 @@
 	  			set_pstate(static_pstate);
 	  		else 
 	  			printf("The parameter manual_pstate is set outside of the valid range for this CPU. Setting the CPU to the slowest frequency/voltage\n");
-	  	}else if(heuristic_mode == 12 || heuristic_mode == 13){
+	  	}else if(heuristic_mode == 12 || heuristic_mode == 13 || heuristic_mode == 15){
 	  		set_pstate(max_pstate);
 	  		set_threads(1);
 	  	}

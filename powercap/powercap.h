@@ -138,6 +138,14 @@ int max_thread_search;
 double min_thread_search_throughput;
 double max_thread_search_throughput;
 
+// Model-based variables
+
+// Matrices of predicted power consumption and throughput for different configurations. 
+// Rows are p-states, columns are threads. It has total_threads+1 column as first column is filled with 0s 
+// since it is not meaningful to run with 0 threads.
+double** power_model; 
+double** throughput_model;
+
 /////////////////////////////////////////////////////////////////
 //	Function declerations
 /////////////////////////////////////////////////////////////////
@@ -152,6 +160,7 @@ inline int pause_thread(int);
 void init_stats_array_pointer(int);
 stats_t* alloc_stats_buffer(int);
 void load_profile_file();
+void init_model_matrices();
 long get_energy();
 long get_time();
 inline void set_threads(int);

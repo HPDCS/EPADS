@@ -1284,6 +1284,102 @@ void heuristic_two_step_stateful(double throughput, double  abort_rate, double p
 	}
 }
 
+// TO-DO
+void compute_power_model(){
+
+	int i, j;
+	
+	for(i = 1; i <= max_pstate; i++){
+			for (j = 1; j <= total_threads; j++){
+				power_model[i][j] = power_model[max_pstate][j];
+			}
+	}
+}
+
+void compute_throughput_model(){
+
+	double c,m,speedup; 
+	int i,j; 
+
+	// Must compute specific model instance for each number of active threads
+	for(j = 1; j <= total_threads; j++){
+		speedup = throughput_model[1][j]/throughput_model[max_pstate][j];
+		c = (pstate[1]*(1-speedup))/(speedup*(pstate[max_pstate]-pstate[1]));
+		m = 1-c;
+
+		#ifdef DEBUG_HEURISTICS
+			printf("Setup of the throughput model started\n");
+			printf("Threads = %d - C = %lf - M = %lf - speedup = %lf\n", j, c, m, speedup);
+		#endif
+		
+		for(i = 2; i < max_pstate; i++)
+			throughput_model[i][j] = (1/(((double) pstate[max_pstate] / 1000)/((double) pstate[i] / 1000)*c+m))*throughput_model[max_pstate][j];
+		
+	}
+
+	#ifdef DEBUG_HEURISTICS
+		for(i = 1; i <= max_pstate; i++){
+			for (j = 1; j <= total_threads; j++){
+				printf("%lf\t", throughput_model[i][j]);
+			}
+			printf("\n");
+		}
+		printf("Setup of the throughput model completed\n");
+	#endif
+}
+
+
+// Relies on power and performance models to predict power and performance.The setup of the models
+// require to sample power and performance of all configurations with P-state = 1 and P-state = max_pstate.
+// In the initial phase, the setup is performed. Consequently, the models are used to selects the best configuration
+// under the power cap based on their predictions. 
+void model_power_throughput(double throughput, double  abort_rate, double power, double energy_per_tx){
+
+	int i, j;
+
+
+	power_model[current_pstate][active_threads] = power;
+	throughput_model[current_pstate][active_threads] = throughput;
+
+	if(active_threads == total_threads && current_pstate == 1){
+		
+		compute_power_model();
+		compute_throughput_model();
+
+		// Init best_threads and best_pstate
+		best_threads = 1;
+		best_pstate = max_pstate;
+		best_throughput = throughput_model[max_pstate][1];
+
+		for(i = 1; i <= max_pstate; i++){
+			for(j = i; j <= total_threads; j++){
+				if(power_model[i][j] < power_limit && throughput_model[i][j] > best_throughput){
+					best_pstate = i;
+					best_threads = j;
+					best_throughput = throughput_model[i][j];
+				}
+			}
+		}
+		
+		stop_searching();
+
+	}else{ 
+
+		if(active_threads < total_threads)
+			set_threads(active_threads+1);
+		else{
+			set_pstate(1);
+			set_threads(1);
+		}
+	}
+
+		
+
+
+
+
+}
+
 ///////////////////////////////////////////////////////////////
 // Main heuristic function
 ///////////////////////////////////////////////////////////////
@@ -1364,6 +1460,9 @@ void heuristic_two_step_stateful(double throughput, double  abort_rate, double p
 				case 14:
 					heuristic_two_step_stateful(throughput, abort_rate, power, energy_per_tx);
 					break;
+				case 15:
+					model_power_throughput(throughput, abort_rate, power, energy_per_tx);
+					break;
 			}
 
 			if(!stopped_searching)
@@ -1404,7 +1503,7 @@ void heuristic_two_step_stateful(double throughput, double  abort_rate, double p
 					if(heuristic_mode == 11){
 						set_pstate(max_pstate);
 						set_threads(starting_threads);
-					}else if(heuristic_mode == 12 || heuristic_mode == 13){
+					}else if(heuristic_mode == 12 || heuristic_mode == 13 || heuristic_mode == 15){
 						set_pstate(max_pstate);
 						set_threads(1);
 					}else{

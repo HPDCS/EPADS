@@ -572,6 +572,9 @@ void stm_init(int threads) {
 	if(heuristic_mode == 1 || heuristic_mode == 2)
 		load_profile_file();
 
+	if(heuristic_mode == 15)
+		init_model_matrices();
+
 	init_global_variables();
 	set_boost(1);
 
