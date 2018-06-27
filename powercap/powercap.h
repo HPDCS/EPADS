@@ -36,6 +36,7 @@ int current_exploit_steps;		// Current number of steps since the last completed 
 double extra_range_percentage;	// Defines the range in percentage over power_limit which is considered valid for the HIGH and LOW configurations. Used by dynamic_heuristic1. Defined in hope_config.txt
 int window_size; 				// Defines the lenght of the window, defined in steps, that should achieve a power consumption within power_limit. Used by dynamic_heuristic1. Defined in hope_config.txt 
 double hysteresis;				// Defines the amount in percentage of hysteresis that should be applied when deciding the next step in a window based on the current value of window_power. Used by dynamic_heuristic1. Defined in hope_config.txt
+double power_uncore;			// System specific parameter that defines the amount of power consumption used by the uncore part of the system, which we consider to be constant. Defined in hope_config.txt
 
 stats_t** stats_array;			// Pointer to pointers of struct stats_s, one for each thread 	
 volatile int round_completed;   // Defines if round completed and thread 0 should collect stats and call the heuristic function 

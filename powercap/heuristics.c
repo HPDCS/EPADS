@@ -1284,16 +1284,48 @@ void heuristic_two_step_stateful(double throughput, double  abort_rate, double p
 	}
 }
 
-// TO-DO
 void compute_power_model(){
 
-	int i, j;
-	
-	for(i = 1; i <= max_pstate; i++){
-			for (j = 1; j <= total_threads; j++){
-				power_model[i][j] = power_model[max_pstate][j];
-			}
+	double alfa, beta, pwr_h, pwr_l, freq_h, freq_l, freq_i, freq3_h, freq3_l;
+	int i,j; 
+
+	freq_h = ((double) pstate[1])/1000;
+	freq_l = ((double) pstate[max_pstate])/1000;
+
+	freq3_h = freq_h*freq_h*freq_h;
+	freq3_l = freq_l*freq_l*freq_l;
+
+	// Must compute specific model instance for each number of active threads
+	for(j = 1; j <= total_threads; j++){
+		
+		pwr_h = power_model[1][j] - power_uncore;
+		pwr_l = power_model[max_pstate][j] - power_uncore;
+		
+		alfa = (pwr_l*freq_h - pwr_h*freq_l)/(freq_h*freq3_l - freq3_h*freq_l);
+		beta = (pwr_l*freq_h*freq_h*freq_h - pwr_h*freq_l*freq_l*freq_l)/(freq_h*freq_h*freq_h*freq_l - freq_h*freq_h*freq_h*freq_l*freq_l*freq_l);
+
+		#ifdef DEBUG_HEURISTICS
+			printf("Setting up the power model ...\n");
+			printf("Threads = %d - alfa = %lf - beta = %lf - power uncore = %lf - pwr_h = %lf - pwr_l = %lf - freq_h %lf - freq3_h %lf\n", 
+				j, alfa, beta, power_uncore, pwr_h, pwr_l, freq_h, freq3_h);
+		#endif
+		
+		for(i = 2; i < max_pstate; i++){
+			freq_i = ((double) pstate[i])/1000;
+			power_model[i][j] = alfa*freq_i*freq_i*freq_i+beta*freq_i+power_uncore; 
+		}
+		
 	}
+
+	#ifdef DEBUG_HEURISTICS
+		for(i = 1; i <= max_pstate; i++){
+			for (j = 1; j <= total_threads; j++){
+				printf("%lf\t", power_model[i][j]);
+			}
+			printf("\n");
+		}
+		printf("Setup of the power model completed\n");
+	#endif
 }
 
 void compute_throughput_model(){
@@ -1308,12 +1340,12 @@ void compute_throughput_model(){
 		m = 1-c;
 
 		#ifdef DEBUG_HEURISTICS
-			printf("Setup of the throughput model started\n");
+			printf("Setting up the throughput model ...\n");
 			printf("Threads = %d - C = %lf - M = %lf - speedup = %lf\n", j, c, m, speedup);
 		#endif
 		
 		for(i = 2; i < max_pstate; i++)
-			throughput_model[i][j] = (1/(((double) pstate[max_pstate] / 1000)/((double) pstate[i] / 1000)*c+m))*throughput_model[max_pstate][j];
+			throughput_model[i][j] = (1/(((double) pstate[max_pstate] * 1000)/((double) pstate[i] * 1000)*c+m))*throughput_model[max_pstate][j];
 		
 	}
 
