@@ -1302,7 +1302,7 @@ void compute_power_model(){
 		pwr_l = power_model[max_pstate][j] - power_uncore;
 		
 		alfa = (pwr_l*freq_h - pwr_h*freq_l)/(freq_h*freq3_l - freq3_h*freq_l);
-		beta = (pwr_l*freq_h*freq_h*freq_h - pwr_h*freq_l*freq_l*freq_l)/(freq_h*freq_h*freq_h*freq_l - freq_h*freq_h*freq_h*freq_l*freq_l*freq_l);
+		beta = (pwr_l*freq_h*freq_h*freq_h - pwr_h*freq_l*freq_l*freq_l)/(freq_h*freq_h*freq_h*freq_l - freq_h*freq_l*freq_l*freq_l);
 
 		#ifdef DEBUG_HEURISTICS
 			printf("Setting up the power model ...\n");
