@@ -1369,7 +1369,6 @@ void model_power_throughput(double throughput, double  abort_rate, double power,
 
 	int i, j;
 
-
 	power_model[current_pstate][active_threads] = power;
 	throughput_model[current_pstate][active_threads] = throughput;
 
@@ -1403,13 +1402,7 @@ void model_power_throughput(double throughput, double  abort_rate, double power,
 			set_pstate(1);
 			set_threads(1);
 		}
-	}
-
-		
-
-
-
-
+	} 
 }
 
 ///////////////////////////////////////////////////////////////
@@ -1515,6 +1508,101 @@ void model_power_throughput(double throughput, double  abort_rate, double power,
 					best_pstate = max_pstate;
 					printf("Workload change detected. Restarting heuristic search\n");
 				}		
+			}
+			else if(detection_mode == 3){
+				if(heuristic_mode == 15){
+					
+					// Copy sample data to compare models with real data
+					power_real[current_pstate][active_threads] = power;
+					throughput_real[current_pstate][active_threads] = throughput;
+
+					// Copy to the validation array predictions from the model. Necessary as we perform multiple runs of the model
+					// to account for workload variability
+					power_validation[current_pstate][active_threads] = power_model[current_pstate][active_threads];
+					throughput_validation[current_pstate][active_threads] = throughput_model[current_pstate][active_threads];
+					
+					if(current_pstate == 2 && active_threads == total_threads){
+						
+						// Do not restart the exploration/model setup
+						detection_mode = 0;
+
+						// Print validation results to file
+						FILE* model_validation_file = fopen("model_validation","w+");
+						int i,j = 0;
+
+						// Write real, predicted and error for throughput to file
+						fprintf(model_validation_file, "Real throughput\n");
+						for(i = 2; i <= max_pstate; i++){
+							for (j = 1; j <= total_threads; j++){
+								fprintf(model_validation_file, "%lf\t", throughput_real[i][j]);
+							}
+							fprintf(model_validation_file, "\n");
+						}
+						fprintf(model_validation_file, "\n");
+
+						fprintf(model_validation_file, "Predicted throughput\n");
+						for(i = 2; i <= max_pstate; i++){
+							for (j = 1; j <= total_threads; j++){
+								fprintf(model_validation_file, "%lf\t", throughput_validation[i][j]);
+							}
+							fprintf(model_validation_file, "\n");
+						}
+						fprintf(model_validation_file, "\n");
+
+						fprintf(model_validation_file, "Throughput error percentage\n");
+						for(i = 2; i <= max_pstate; i++){
+							for (j = 1; j <= total_threads; j++){
+								fprintf(model_validation_file, "%lf\t", (throughput_validation[i][j]-throughput_real[i][j])/throughput_real[i][j]);
+							}
+							fprintf(model_validation_file, "\n");
+						}
+						fprintf(model_validation_file, "\n");
+
+						// Write real, predicted and error for power to file
+						fprintf(model_validation_file, "Real power\n");
+						for(i = 2; i <= max_pstate; i++){
+							for (j = 1; j <= total_threads; j++){
+								fprintf(model_validation_file, "%lf\t", power_real[i][j]);
+							}
+							fprintf(model_validation_file, "\n");
+						}
+						fprintf(model_validation_file, "\n");
+
+						fprintf(model_validation_file, "Predicted power\n");
+						for(i = 2; i <= max_pstate; i++){
+							for (j = 1; j <= total_threads; j++){
+								fprintf(model_validation_file, "%lf\t", power_validation[i][j]);
+							}
+							fprintf(model_validation_file, "\n");
+						}
+						fprintf(model_validation_file, "\n");
+
+						fprintf(model_validation_file, "power error percentage\n");
+						for(i = 2; i <= max_pstate; i++){
+							for (j = 1; j <= total_threads; j++){
+								fprintf(model_validation_file, "%lf\t", (power_validation[i][j]-power_real[i][j])/power_real[i][j]);
+							}
+							fprintf(model_validation_file, "\n");
+						}
+						fprintf(model_validation_file, "\n");
+
+						#ifdef DEBUG_HEURISTICS
+							printf("Model validation completed\n");
+						#endif
+					}
+					else if(active_threads == total_threads){ // Should restart the model 
+						validation_pstate--;
+						stopped_searching = 0;
+						set_pstate(max_pstate);
+	  					set_threads(1);
+	  					best_throughput = -1;
+						best_threads = 1;
+						best_pstate = max_pstate;
+					}
+					else{ // Not yet finished current P-state, should increase threads
+						set_threads(active_threads+1);
+					}
+				}
 			}
 			else if(detection_mode == 2){
 

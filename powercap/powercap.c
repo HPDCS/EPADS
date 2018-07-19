@@ -281,16 +281,36 @@
 		// Allocate the matrices
 		power_model = (double**) malloc(sizeof(double*) * (max_pstate+1));
 		throughput_model = (double**) malloc(sizeof(double*) * (max_pstate+1)); 
+
+		// Allocate the validation matrices
+		power_validation = (double**) malloc(sizeof(double*) * (max_pstate+1));
+		throughput_validation = (double**) malloc(sizeof(double*) * (max_pstate+1)); 
+
+		// Allocate matrices to store real values during validation
+		power_real = (double**) malloc(sizeof(double*) * (max_pstate+1));
+		throughput_real = (double**) malloc(sizeof(double*) * (max_pstate+1)); 
  
 		for (i = 0; i <= max_pstate; i++){
   	   		power_model[i] = (double *) malloc(sizeof(double) * (total_threads));
   	   		throughput_model[i] = (double *) malloc(sizeof(double) * (total_threads));
+
+  	   		power_validation[i] = (double *) malloc(sizeof(double) * (total_threads));
+  	   		throughput_validation[i] = (double *) malloc(sizeof(double) * (total_threads));
+
+  	   		power_real[i] = (double *) malloc(sizeof(double) * (total_threads));
+  	   		throughput_real[i] = (double *) malloc(sizeof(double) * (total_threads));
   	   	}
 
   	   	// Init first row with all zeros 
   	   	for(i = 0; i <= max_pstate; i++){
   	   		power_model[i][0] = 0;
   	   		throughput_model[i][0] = 0;
+
+  	   		power_validation[i][0] = 0;
+  	   		throughput_validation[i][0] = 0;
+
+  	   		power_real[i][0] = 0;
+  	   		throughput_real[i][0] = 0;
   	   	}
 	}
 
@@ -492,6 +512,8 @@
 		max_thread_search = total_threads;
 		min_thread_search_throughput = -1;
 		max_thread_search_throughput = -1;
+
+		pstate_validation = max_pstate-1;
 	}
 
 	// Reset all threads when reaching a barrier

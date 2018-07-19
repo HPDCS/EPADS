@@ -147,6 +147,16 @@ double max_thread_search_throughput;
 double** power_model; 
 double** throughput_model;
 
+double** power_validation; 
+double** throughput_validation;
+
+double** power_real; 
+double** throughput_real;
+
+// Variable necessary to validate the effectiveness of the models
+int validation_pstate;
+
+
 /////////////////////////////////////////////////////////////////
 //	Function declerations
 /////////////////////////////////////////////////////////////////
