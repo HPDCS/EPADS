@@ -513,7 +513,7 @@
 		min_thread_search_throughput = -1;
 		max_thread_search_throughput = -1;
 
-		pstate_validation = max_pstate-1;
+		validation_pstate = max_pstate-1;
 	}
 
 	// Reset all threads when reaching a barrier
