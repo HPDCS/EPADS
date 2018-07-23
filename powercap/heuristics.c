@@ -54,8 +54,13 @@ inline void stop_searching(){
 		best_pstate = max_pstate;
 	}
 
-	set_pstate(best_pstate);
-	set_threads(best_threads);
+	if(heuristic_mode == 15 && detection_mode == 3){
+		set_pstate(validation_pstate);
+		set_threads(1);
+	}else{
+		set_pstate(best_pstate);
+		set_threads(best_threads);
+    }
 
 	#ifdef DEBUG_HEURISTICS
 		printf("EXPLORATION COMPLETED IN %d STEPS. OPTIMAL: %d THREADS P-STATE %d\n", steps, best_threads, best_pstate);
@@ -1527,12 +1532,12 @@ void model_power_throughput(double throughput, double  abort_rate, double power,
 						detection_mode = 0;
 
 						// Print validation results to file
-						FILE* model_validation_file = fopen("model_validation","w+");
+						FILE* model_validation_file = fopen("model_validation.txt","w+");
 						int i,j = 0;
 
 						// Write real, predicted and error for throughput to file
 						fprintf(model_validation_file, "Real throughput\n");
-						for(i = 2; i <= max_pstate; i++){
+						for(i = 2; i < max_pstate; i++){
 							for (j = 1; j <= total_threads; j++){
 								fprintf(model_validation_file, "%lf\t", throughput_real[i][j]);
 							}
@@ -1541,7 +1546,7 @@ void model_power_throughput(double throughput, double  abort_rate, double power,
 						fprintf(model_validation_file, "\n");
 
 						fprintf(model_validation_file, "Predicted throughput\n");
-						for(i = 2; i <= max_pstate; i++){
+						for(i = 2; i < max_pstate; i++){
 							for (j = 1; j <= total_threads; j++){
 								fprintf(model_validation_file, "%lf\t", throughput_validation[i][j]);
 							}
@@ -1550,7 +1555,7 @@ void model_power_throughput(double throughput, double  abort_rate, double power,
 						fprintf(model_validation_file, "\n");
 
 						fprintf(model_validation_file, "Throughput error percentage\n");
-						for(i = 2; i <= max_pstate; i++){
+						for(i = 2; i < max_pstate; i++){
 							for (j = 1; j <= total_threads; j++){
 								fprintf(model_validation_file, "%lf\t", (throughput_validation[i][j]-throughput_real[i][j])/throughput_real[i][j]);
 							}
@@ -1560,7 +1565,7 @@ void model_power_throughput(double throughput, double  abort_rate, double power,
 
 						// Write real, predicted and error for power to file
 						fprintf(model_validation_file, "Real power\n");
-						for(i = 2; i <= max_pstate; i++){
+						for(i = 2; i < max_pstate; i++){
 							for (j = 1; j <= total_threads; j++){
 								fprintf(model_validation_file, "%lf\t", power_real[i][j]);
 							}
@@ -1569,7 +1574,7 @@ void model_power_throughput(double throughput, double  abort_rate, double power,
 						fprintf(model_validation_file, "\n");
 
 						fprintf(model_validation_file, "Predicted power\n");
-						for(i = 2; i <= max_pstate; i++){
+						for(i = 2; i < max_pstate; i++){
 							for (j = 1; j <= total_threads; j++){
 								fprintf(model_validation_file, "%lf\t", power_validation[i][j]);
 							}
@@ -1578,13 +1583,15 @@ void model_power_throughput(double throughput, double  abort_rate, double power,
 						fprintf(model_validation_file, "\n");
 
 						fprintf(model_validation_file, "power error percentage\n");
-						for(i = 2; i <= max_pstate; i++){
+						for(i = 2; i < max_pstate; i++){
 							for (j = 1; j <= total_threads; j++){
 								fprintf(model_validation_file, "%lf\t", (power_validation[i][j]-power_real[i][j])/power_real[i][j]);
 							}
 							fprintf(model_validation_file, "\n");
 						}
 						fprintf(model_validation_file, "\n");
+
+						fclose(model_validation_file);
 
 						#ifdef DEBUG_HEURISTICS
 							printf("Model validation completed\n");
@@ -1598,9 +1605,17 @@ void model_power_throughput(double throughput, double  abort_rate, double power,
 	  					best_throughput = -1;
 						best_threads = 1;
 						best_pstate = max_pstate;
+
+						#ifdef DEBUG_HEURISTICS
+							printf("Switched to: #threads %d - pstate %d\n", active_threads, current_pstate);
+						#endif 
 					}
 					else{ // Not yet finished current P-state, should increase threads
 						set_threads(active_threads+1);
+
+						#ifdef DEBUG_HEURISTICS
+							printf("Switched to: #threads %d - pstate %d\n", active_threads, current_pstate);
+						#endif 
 					}
 				}
 			}
