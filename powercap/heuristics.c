@@ -804,7 +804,7 @@ void explore_all_configurations(double throughput, double  abort_rate, double po
 
 
 // Helper function for dynamic heuristic0, called in phase 0
-inline void from_phase0_to_next(){
+ static inline void from_phase0_to_next(){
 	
 	if(best_throughput > 0){
 		phase0_threads = best_threads;
@@ -850,7 +850,7 @@ inline void from_phase0_to_next(){
 }
 
 // Helper function for dynamic heuristic0, called in phase 1
-inline void from_phase1_to_next(){
+static inline void from_phase1_to_next(){
 	// Check if should move to phase 0 or should stop searching 
 	if(phase0_pstate == max_pstate || best_threads == total_threads || phase0_threads == total_threads){
 		#ifdef DEBUG_HEURISTICS
@@ -1174,7 +1174,7 @@ void heuristic_two_step_search(double throughput, double  abort_rate, double pow
 
 
 // Helper function for dynamic heuristic0, called in phase 0
-inline void from_phase0_to_next_stateful(){
+static inline void from_phase0_to_next_stateful(){
 
 	phase == 1;
 
