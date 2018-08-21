@@ -14,3 +14,5 @@ laplacalc.c: decs.h
 multi.c: decs.h
 subblock.c: decs.h
 
+
+

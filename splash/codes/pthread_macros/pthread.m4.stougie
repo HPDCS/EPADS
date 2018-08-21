@@ -38,7 +38,7 @@ define(BARINIT,
 
 define(LOCKDEC, `pthread_mutex_t $1;')
 define(LOCKINIT, `{pthread_mutex_init(&($1),NULL);}')
-define(LOCK, `{pthread_mutex_lock(&($1)); printf("Lock taken\n");}')
+define(LOCK, `{pthread_mutex_lock(&($1));powercap_print();}')
 define(UNLOCK, `{pthread_mutex_unlock(&($1));}')
 
 define(ALOCKDEC, `pthread_mutex_t ($1)[$2];')
@@ -90,6 +90,7 @@ define(INCLUDES,`
 #include <stdlib.h>
 #include <semaphore.h>
 #include <assert.h>
+#include "/home/stefano/git/EPADS/splash/codes/powercap/powercap.h"
 #if __STDC_VERSION__ >= 201112L
 #include <stdatomic.h>
 #endif
