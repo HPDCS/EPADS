@@ -77,6 +77,7 @@ define(CREATE,
 		}
 	}
 	pthread_mutex_unlock(&__intern__);
+	powercap_init($2);
 
 	$1();
 }')
