@@ -1,6 +1,4 @@
-*.c
 *.o
-*.h
 codes/apps/barnes/BARNES
 codes/apps/fmm/FMM
 codes/apps/ocean/contiguous_partitions/OCEAN
