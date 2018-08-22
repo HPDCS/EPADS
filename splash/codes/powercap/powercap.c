@@ -4,14 +4,6 @@
 #include <time.h>
 #include <signal.h>
 
-// Function just used for debug
-void powercap_print(){
-	
-	#ifdef DEBUG_HEURISTICS
-		printf("Lock taken from function in powercap.c\n");
-	#endif
-}
-
 int set_pstate(int input_pstate){
 	
 	int i;
@@ -141,10 +133,12 @@ void init_thread_management(int threads){
 }
 
 
-// Executed inside stm_init
 void check_running_array(int threadId){
 	
 	while(running_array[threadId] == 0){
+		#ifdef DEBUG_HEURISTICS
+			printf("Pausing thread %d\n", thread_number);
+		#endif
 		pause();
 	}
 }
@@ -244,8 +238,8 @@ void load_config_file(){
 		printf("Error opening powercap_config configuration file.\n");
 		exit(1);
 	}
-	if (fscanf(config_file, "STATIC_PSTATE=%d POWER_LIMIT=%lf COMMITS_ROUND=%d HEURISTIC_MODE=%d DETECTION_MODE=%d EXPLOIT_STEPS=%d POWER_UNCORE=%lf", 
-			 &static_pstate, &power_limit, &total_commits_round, &heuristic_mode, &detection_mode, &exploit_steps, &power_uncore)!=7) {
+	if (fscanf(config_file, "STARTING_THREADS=%d STATIC_PSTATE=%d POWER_LIMIT=%lf COMMITS_ROUND=%d HEURISTIC_MODE=%d DETECTION_MODE=%d EXPLOIT_STEPS=%d POWER_UNCORE=%lf", 
+			 &starting_threads, &static_pstate, &power_limit, &total_commits_round, &heuristic_mode, &detection_mode, &exploit_steps, &power_uncore)!=8) {
 		printf("The number of input parameters of the configuration file does not match the number of required parameters.\n");
 		exit(1);
 	}
@@ -311,22 +305,124 @@ long get_time(){
 	return time;
 }
 
+void init_model_matrices(){
+
+	int i;
+
+	// Allocate the matrices
+	power_model = (double**) malloc(sizeof(double*) * (max_pstate+1));
+	throughput_model = (double**) malloc(sizeof(double*) * (max_pstate+1)); 
+
+	// Allocate the validation matrices
+	power_validation = (double**) malloc(sizeof(double*) * (max_pstate+1));
+	throughput_validation = (double**) malloc(sizeof(double*) * (max_pstate+1)); 
+
+	// Allocate matrices to store real values during validation
+	power_real = (double**) malloc(sizeof(double*) * (max_pstate+1));
+	throughput_real = (double**) malloc(sizeof(double*) * (max_pstate+1)); 
+
+	for (i = 0; i <= max_pstate; i++){
+   		power_model[i] = (double *) malloc(sizeof(double) * (total_threads));
+   		throughput_model[i] = (double *) malloc(sizeof(double) * (total_threads));
+
+   		power_validation[i] = (double *) malloc(sizeof(double) * (total_threads));
+   		throughput_validation[i] = (double *) malloc(sizeof(double) * (total_threads));
+
+   		power_real[i] = (double *) malloc(sizeof(double) * (total_threads));
+   		throughput_real[i] = (double *) malloc(sizeof(double) * (total_threads));
+   	}
+
+   	// Init first row with all zeros 
+   	for(i = 0; i <= max_pstate; i++){
+   		power_model[i][0] = 0;
+   		throughput_model[i][0] = 0;
+
+   		power_validation[i][0] = 0;
+   		throughput_validation[i][0] = 0;
+
+   		power_real[i][0] = 0;
+   		throughput_real[i][0] = 0;
+   	}
+}
+
+// Initialization of global variables 
+void init_global_variables(){
+
+	#ifdef DEBUG_HEURISTICS
+		printf("Initializing global variables\n");
+	#endif
+}
+
+
+// Used to either enable or disable boosting facilities such as TurboBoost. Boost is disabled whenever the current config goes out of the powercap 
+void set_boost(int value){
+
+	int i;
+	char fname[64];
+	FILE* boost_file;
+
+	if(value != 0 && value != 1){
+		printf("Set_boost parameter invalid. Shutting down application\n");
+		exit(1);
+	}
+	
+	boost_file = fopen("/sys/devices/system/cpu/cpufreq/boost", "w+");
+	fprintf(boost_file, "%d", value);
+	fflush(boost_file);
+	fclose(boost_file);
+
+	return;
+}
+
+
+void powercap_init_thread(){
+
+	thread_number_init = 1;
+	int id = __atomic_fetch_add(&thread_counter, 1, __ATOMIC_SEQ_CST);
+	stats_ptr = alloc_stats_buffer(id);
+	thread_number = id;
+	pthread_ids[id]=pthread_self();
+
+	#ifdef DEBUG_HEURISTICS
+		printf("Allocated thread %d with tid %lu\n", id, pthread_ids[id]);
+	#endif
+
+	// Wait for all threads to get initialized
+	while(thread_counter != total_threads){}
+
+	#ifdef DEBUG_HEURISTICS
+		if(id == 0){
+			printf("Initialized all thread ids\n");
+		}
+	#endif
+
+	// Thread 0 sets itself as a collector and inits global variables or init global variables if lock based
+	if( id == 0){
+		stats_ptr->collector = 1;
+		net_time_slot_start = get_time();
+		net_energy_slot_start = get_energy();
+	}
+
+}
+
+/////////////////////////////////////////////////////////////
+// EXTERNAL API
+/////////////////////////////////////////////////////////////
 
 void powercap_init(int threads){
 	
+	#ifdef DEBUG_HEURISTICS	
+		printf("CREATE called\n");
+	#endif
+
 	init_DVFS_management();
 	init_thread_management(threads);
-
-	printf("Energy: %ld\n", get_energy());
-	
-	/*init_stats_array_pointer(threads);
+	init_stats_array_pointer(threads);
 	load_config_file();
-
-	if(heuristic_mode == 15)
-		init_model_matrices();
-
 	init_global_variables();
 	set_boost(1);
+	if(heuristic_mode == 15)
+		init_model_matrices();
 
 	#ifdef DEBUG_HEURISTICS
 		printf("Heuristic mode: %d\n", heuristic_mode);
@@ -338,9 +434,59 @@ void powercap_init(int threads){
 	}
 	
 	// Set active_threads to starting_threads
-	for(i = starting_threads; i<total_threads;i++){
+	for(int i = starting_threads; i<total_threads;i++){
 		pause_thread(i);
 	}
+} 
 
-	*/
+
+// Function called before taking a lock
+void powercap_lock_taken(){
+	
+	#ifdef DEBUG_HEURISTICS
+		printf("Lock taken from function in powercap.c\n");
+	#endif
+
+	// At first run should initialize thread and get thread number
+	if(thread_number_init == 0){
+		powercap_init_thread();
+	}
+
+	check_running_array(thread_number);	
+}
+
+// Called before a barrier, must wake-up all threads to avoid a deadlock
+void powercap_before_barrier(){
+
+	if(thread_number_init == 1 && thread_counter == total_threads && thread_number == 0 && active_threads!=total_threads) {
+	
+		#ifdef DEBUG_HEURISTICS
+			printf("Thread 0 detected a barrier\n");
+		#endif
+			
+		// Next decision phase should be dropped
+		barrier_detected = 1;
+
+		// Dont consider next slot for power_limit error measurements
+		net_discard_barrier = 1;
+
+		// Save number of threads that should be restored after the barrier
+		pre_barrier_threads = active_threads;
+
+		// Wake up all threads
+		for(int i=active_threads; i< total_threads; i++){
+  			wake_up_thread(i);
+  		}
+	}
+}
+
+void powercap_after_barrier(){
+
+	if(thread_number_init == 1 && thread_number == 0 && active_threads!=total_threads){
+		set_threads(pre_barrier_threads);
+		
+		#ifdef DEBUG_HEURISTICS
+			printf("Setting threads back to %d\n", pre_barrier_threads);
+		#endif
+	}
 }

@@ -18,6 +18,7 @@ dnl define(SPLASH3_ROI_END, `m5_dumpreset_stats(0, 0)')
 
 define(BARRIER,
 `{
+powercap_before_barrier();
 pthread_mutex_lock(&(($1).bar_mutex));
 ($1).bar_teller++;
 if (($1).bar_teller == ($2)) {
@@ -26,7 +27,8 @@ if (($1).bar_teller == ($2)) {
 } else {
 	pthread_cond_wait(&(($1).bar_cond), &(($1).bar_mutex));
 }
-pthread_mutex_unlock(&(($1).bar_mutex));}
+pthread_mutex_unlock(&(($1).bar_mutex));
+powercap_after_barrier();}
 ')
 define(BARDEC, `struct { pthread_mutex_t bar_mutex; pthread_cond_t bar_cond; unsigned bar_teller; } $1;')
 define(BARINIT,
@@ -38,7 +40,7 @@ define(BARINIT,
 
 define(LOCKDEC, `pthread_mutex_t $1;')
 define(LOCKINIT, `{pthread_mutex_init(&($1),NULL);}')
-define(LOCK, `{pthread_mutex_lock(&($1));powercap_print();}')
+define(LOCK, `{powercap_lock_taken(); pthread_mutex_lock(&($1));}')
 define(UNLOCK, `{pthread_mutex_unlock(&($1));}')
 
 define(ALOCKDEC, `pthread_mutex_t ($1)[$2];')
@@ -68,6 +70,7 @@ define(CREATE,
 	long	i, Error;
 
 	assert(__threads__<__MAX_THREADS__);
+	powercap_init($2);
 	pthread_mutex_lock(&__intern__);
 	for (i = 0; i < ($2) - 1; i++) {
 		Error = pthread_create(&__tid__[__threads__++], NULL, (void * (*)(void *))($1), NULL);
@@ -77,8 +80,6 @@ define(CREATE,
 		}
 	}
 	pthread_mutex_unlock(&__intern__);
-	powercap_init($2);
-
 	$1();
 }')
 define(WAIT_FOR_END, `{int aantal=$1; while (aantal--) pthread_join(__tid__[aantal], NULL);}')
