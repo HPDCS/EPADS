@@ -443,20 +443,38 @@ void powercap_init(int threads){
 // Function called before taking a lock
 void powercap_lock_taken(){
 	
-	#ifdef DEBUG_HEURISTICS
-		printf("Lock taken from function in powercap.c\n");
-	#endif
-
 	// At first run should initialize thread and get thread number
 	if(thread_number_init == 0){
 		powercap_init_thread();
 	}
 
+	#ifdef DEBUG_HEURISTICS
+		if(thread_number_init == 1 && thread_number == 0)
+				printf("Lock\n");
+	#endif
+
 	check_running_array(thread_number);	
+}
+
+void powercap_alock_taken(){
+	// At first run should initialize thread and get thread number
+	if(thread_number_init == 0){
+		powercap_init_thread();
+	}
+
+	#ifdef DEBUG_HEURISTICS
+		if(thread_number_init == 1 && thread_number == 0)
+				printf("ALock\n");
+	#endif
 }
 
 // Called before a barrier, must wake-up all threads to avoid a deadlock
 void powercap_before_barrier(){
+
+	#ifdef DEBUG_HEURISTICS
+		if(thread_number_init == 1 && thread_number == 0)
+			printf("Barrier\n");
+	#endif
 
 	if(thread_number_init == 1 && thread_counter == total_threads && thread_number == 0 && active_threads!=total_threads) {
 	
