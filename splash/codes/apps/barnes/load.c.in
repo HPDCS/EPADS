@@ -48,8 +48,14 @@ void maketree(long ProcessId)
 	 UNLOCK(Global->io_lock);
       }
    }
+   // debug
+   printf("Before Hackcofm by thread %d\n", thread_number);
+   //debug
    BARRIER(Global->Bartree,NPROC);
    hackcofm(ProcessId );
+   // debug
+   printf("Hackcofm done by thread %d\n", thread_number);
+   //debug
    BARRIER(Global->Barcom,NPROC);
 }
 

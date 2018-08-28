@@ -65,6 +65,8 @@ int validation_pstate;	// Variable necessary to validate the effectiveness of th
 int barrier_detected; 			// If set to 1 should drop current statistics round, had to wake up all threads in order to overcome a barrier 
 int pre_barrier_threads;	    // Number of threads before entering the barrier, should be restored afterwards
 
+long lock_counter; 
+
 ////////////////////////////////////////////////////////////////////////
 // THREAD LOCAL VARIABLES
 ////////////////////////////////////////////////////////////////////////

@@ -86,7 +86,11 @@ int init_DVFS_management(){
 }
 
 // SIGUSR1 handler. Doesn't need to execute any code
-void sig_func(int sig){}
+void sig_func(int sig){
+	//DEBUG
+	printf("Thread %d received SIGUSR1\n", thread_number);
+	//DEBUG
+}
 
 // Executed inside stm_init
 void init_thread_management(int threads){
@@ -448,6 +452,9 @@ void powercap_lock_taken(){
 		powercap_init_thread();
 	}
 
+	if(thread_number == 0)
+		printf("Lock counter: %ld\n", lock_counter++);
+
 	#ifdef DEBUG_HEURISTICS
 		if(thread_number_init == 1 && thread_number == 0)
 				printf("Lock\n");
@@ -462,18 +469,25 @@ void powercap_alock_taken(){
 		powercap_init_thread();
 	}
 
+	if(thread_number == 0)
+		printf("Lock counter: %ld\n", lock_counter++);
+
 	#ifdef DEBUG_HEURISTICS
 		if(thread_number_init == 1 && thread_number == 0)
 				printf("ALock\n");
 	#endif
+
+	check_running_array(thread_number);	
 }
 
 // Called before a barrier, must wake-up all threads to avoid a deadlock
 void powercap_before_barrier(){
 
 	#ifdef DEBUG_HEURISTICS
-		if(thread_number_init == 1 && thread_number == 0)
+		if(thread_number_init == 1 && thread_number == 0){
 			printf("Barrier\n");
+			printf("Active thread %d\n", active_threads);
+		}
 	#endif
 
 	if(thread_number_init == 1 && thread_counter == total_threads && thread_number == 0 && active_threads!=total_threads) {
@@ -500,7 +514,11 @@ void powercap_before_barrier(){
 
 void powercap_after_barrier(){
 
-	if(thread_number_init == 1 && thread_number == 0 && active_threads!=total_threads){
+	//DEBUG
+	printf("Powercap_after_barrier - thread_number_init %d - thread_number %d - active_thread %d - pre_barrier_threads %d \n", thread_number_init, thread_number, active_threads, pre_barrier_threads);
+	//
+
+	if(thread_number_init == 1 && thread_number == 0 && pre_barrier_threads != 0 && active_threads!=pre_barrier_threads){
 		set_threads(pre_barrier_threads);
 		
 		#ifdef DEBUG_HEURISTICS
