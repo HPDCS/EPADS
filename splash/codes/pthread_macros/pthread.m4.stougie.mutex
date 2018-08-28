@@ -57,7 +57,7 @@ define(WAITPAUSE, `{sem_wait(&($1));}')
 
 define(CONDVARDEC, `pthread_cond_t $1;')
 define(CONDVARINIT, `pthread_cond_init(&($1), NULL);')
-define(CONDVARWAIT,`{ pthread_cond_wait(&($1), &($2)); }')
+define(CONDVARWAIT,`{ printf("Condition mutex\n"); pthread_cond_wait(&($1), &($2)); }')
 define(CONDVARSIGNAL,`{ pthread_cond_signal(&($1)); }')
 define(CONDVARBCAST,`{ pthread_cond_broadcast(&($1)); }')
 

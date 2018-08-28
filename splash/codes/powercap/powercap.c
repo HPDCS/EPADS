@@ -85,11 +85,12 @@ int init_DVFS_management(){
 	return 0;
 }
 
-// SIGUSR1 handler. Doesn't need to execute any code
+// SIGUSR1 handler
 void sig_func(int sig){
-	//DEBUG
-	printf("Thread %d received SIGUSR1\n", thread_number);
-	//DEBUG
+	
+	#ifdef DEBUG_HEURISTICS
+		printf("Thread %d received SIGUSR1\n", thread_number);
+	#endif
 }
 
 // Executed inside stm_init
@@ -139,9 +140,9 @@ void init_thread_management(int threads){
 
 void check_running_array(int threadId){
 	
-	while(running_array[threadId] == 0){
+	while(cond_waiters == 0 && running_token == 0 && running_array[threadId] == 0){
 		#ifdef DEBUG_HEURISTICS
-			printf("Pausing thread %d\n", thread_number);
+			printf("Thread %d calling pause() - cond_waiters = %d - running_token = %d - running_array = %d\n", thread_number, cond_waiters, running_token, running_array[thread_number]);
 		#endif
 		pause();
 	}
@@ -154,12 +155,25 @@ int wake_up_thread(int thread_id){
 		printf("Waking up a thread already running\n");
 		return -1;
 	}
-
 	running_array[thread_id] = 1;
-	pthread_kill(pthread_ids[thread_id], SIGUSR1);
 	active_threads++;
+	pthread_kill(pthread_ids[thread_id], SIGUSR1);
 	return 0;
 }
+
+// Used to wake up thread even if with running_array equal to 0 
+int force_wake_up_thread(int thread_id){
+	
+	#ifdef DEBUG_HEURISTICS
+		if(running_array[thread_id] == 0){
+			printf("Forcing temporary wake-up of thread %d with running_array value %d\n", thread_id, running_array[thread_id]);
+		}
+	#endif
+
+	pthread_kill(pthread_ids[thread_id], SIGUSR1);
+	return 0;
+}
+
 
 // Used by the heuristics to tune the number of active threads 
 int pause_thread(int thread_id){
@@ -387,13 +401,15 @@ void powercap_init_thread(){
 	thread_number = id;
 	pthread_ids[id]=pthread_self();
 
+	/*
 	#ifdef DEBUG_HEURISTICS
 		printf("Allocated thread %d with tid %lu\n", id, pthread_ids[id]);
 	#endif
+	*/
 
 	// Wait for all threads to get initialized
 	while(thread_counter != total_threads){}
-
+	
 	#ifdef DEBUG_HEURISTICS
 		if(id == 0){
 			printf("Initialized all thread ids\n");
@@ -452,6 +468,7 @@ void powercap_lock_taken(){
 		powercap_init_thread();
 	}
 
+	/*
 	if(thread_number == 0)
 		printf("Lock counter: %ld\n", lock_counter++);
 
@@ -459,7 +476,8 @@ void powercap_lock_taken(){
 		if(thread_number_init == 1 && thread_number == 0)
 				printf("Lock\n");
 	#endif
-
+	*/
+	
 	check_running_array(thread_number);	
 }
 
@@ -469,6 +487,7 @@ void powercap_alock_taken(){
 		powercap_init_thread();
 	}
 
+	/*
 	if(thread_number == 0)
 		printf("Lock counter: %ld\n", lock_counter++);
 
@@ -476,6 +495,7 @@ void powercap_alock_taken(){
 		if(thread_number_init == 1 && thread_number == 0)
 				printf("ALock\n");
 	#endif
+	*/
 
 	check_running_array(thread_number);	
 }
@@ -483,17 +503,10 @@ void powercap_alock_taken(){
 // Called before a barrier, must wake-up all threads to avoid a deadlock
 void powercap_before_barrier(){
 
-	#ifdef DEBUG_HEURISTICS
-		if(thread_number_init == 1 && thread_number == 0){
-			printf("Barrier\n");
-			printf("Active thread %d\n", active_threads);
-		}
-	#endif
-
 	if(thread_number_init == 1 && thread_counter == total_threads && thread_number == 0 && active_threads!=total_threads) {
-	
+		
 		#ifdef DEBUG_HEURISTICS
-			printf("Thread 0 detected a barrier\n");
+			printf("Powercap_before_barrier - active_thread %d - pre_barrier_threads %d - running_token %d \n", active_threads, pre_barrier_threads, running_token);
 		#endif
 			
 		// Next decision phase should be dropped
@@ -505,6 +518,9 @@ void powercap_before_barrier(){
 		// Save number of threads that should be restored after the barrier
 		pre_barrier_threads = active_threads;
 
+		// Set the running token, necessary in case of unlucky interleaving of operations  
+		running_token = 1;
+
 		// Wake up all threads
 		for(int i=active_threads; i< total_threads; i++){
   			wake_up_thread(i);
@@ -514,15 +530,45 @@ void powercap_before_barrier(){
 
 void powercap_after_barrier(){
 
-	//DEBUG
-	printf("Powercap_after_barrier - thread_number_init %d - thread_number %d - active_thread %d - pre_barrier_threads %d \n", thread_number_init, thread_number, active_threads, pre_barrier_threads);
-	//
-
 	if(thread_number_init == 1 && thread_number == 0 && pre_barrier_threads != 0 && active_threads!=pre_barrier_threads){
-		set_threads(pre_barrier_threads);
+		
+		#ifdef DEBUG_HEURISTICS
+			printf("Powercap_after_barrier - active_thread %d - pre_barrier_threads %d - running_token %d \n", active_threads, pre_barrier_threads, running_token);
+		#endif
+
+		// Unset the running token, necessary in case of unlucky interleaving of operations  
+		running_token = 0;
 		
 		#ifdef DEBUG_HEURISTICS
 			printf("Setting threads back to %d\n", pre_barrier_threads);
 		#endif
+
+		set_threads(pre_barrier_threads);
 	}
+}
+
+void powercap_before_cond_wait(){
+
+	#ifdef DEBUG_HEURISTICS
+		printf("powercap_before_cond_wait() called\n");
+	#endif
+
+	__atomic_fetch_add(&cond_waiters, 1, __ATOMIC_SEQ_CST);
+
+	// CARE: should probably rephrase. Still necessary to drop measurements
+	barrier_detected = 1;
+
+	// Wake up all threads
+	for(int i=active_threads; i < total_threads; i++){
+		force_wake_up_thread(i);
+	}
+}
+
+void powercap_after_cond_wait(){
+	
+	#ifdef DEBUG_HEURISTICS
+		printf("powercap_after_cond_wait() called\n");
+	#endif
+
+	__atomic_fetch_add(&cond_waiters, -1, __ATOMIC_SEQ_CST);
 }

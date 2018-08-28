@@ -25,6 +25,8 @@ int steps;						// Number of steps required for the heuristic to converge
 stats_t** stats_array;			// Pointer to pointers of struct stats_s, one for each thread 	
 volatile int round_completed;   // Defines if round completed and thread 0 should collect stats and call the heuristic function
 volatile int thread_counter;	// Global variable used for assigning an increasing counter to threads
+volatile int running_token;		// Token used to manage sleep after barrier. Necessary to manage situations where signals arrive before thread is actually back to pausing
+volatile int cond_waiters;		// Used to manage phread conditional wait. It's incremented and decremented atomically
 
 // powercap_config.txt variables
 int starting_threads;			// Number of threads running at the start of the exploration
@@ -65,6 +67,7 @@ int validation_pstate;	// Variable necessary to validate the effectiveness of th
 int barrier_detected; 			// If set to 1 should drop current statistics round, had to wake up all threads in order to overcome a barrier 
 int pre_barrier_threads;	    // Number of threads before entering the barrier, should be restored afterwards
 
+// Debug variables
 long lock_counter; 
 
 ////////////////////////////////////////////////////////////////////////
@@ -84,5 +87,8 @@ void powercap_alock_taken(void);
 void powercap_init(int);
 void powercap_before_barrier(void);
 void powercap_after_barrier(void);
+void powercap_before_cond_wait(void);
+void powercap_after_cond_wait(void);
+
 
 #endif
