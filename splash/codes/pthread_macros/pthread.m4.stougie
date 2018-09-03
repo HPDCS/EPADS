@@ -45,7 +45,7 @@ define(UNLOCK, `{pthread_mutex_unlock(&($1));}')
 
 define(ALOCKDEC, `pthread_mutex_t ($1)[$2];')
 define(ALOCKINIT, `{ int i; for(i = 0; i < ($2); i++) pthread_mutex_init(&(($1)[i]), NULL); }')
-define(ALOCK, `{powercap_alock_taken(); pthread_mutex_lock(&(($1)[($2)]));}')
+define(ALOCK, `{powercap_lock_taken(); pthread_mutex_lock(&(($1)[($2)]));}')
 define(AGETL, `(($1)[$2])')
 define(AULOCK, `{pthread_mutex_unlock(&(($1)[($2)]));}')
 

@@ -83,7 +83,6 @@ static volatile __thread stats_t* stats_ptr;		// Pointer to stats struct for the
 ////////////////////////////////////////////////////////////////////////
 
 void powercap_lock_taken(void);
-void powercap_alock_taken(void);
 void powercap_init(int);
 void powercap_before_barrier(void);
 void powercap_after_barrier(void);

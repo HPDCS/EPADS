@@ -481,25 +481,6 @@ void powercap_lock_taken(){
 	check_running_array(thread_number);	
 }
 
-void powercap_alock_taken(){
-	// At first run should initialize thread and get thread number
-	if(thread_number_init == 0){
-		powercap_init_thread();
-	}
-
-	/*
-	if(thread_number == 0)
-		printf("Lock counter: %ld\n", lock_counter++);
-
-	#ifdef DEBUG_HEURISTICS
-		if(thread_number_init == 1 && thread_number == 0)
-				printf("ALock\n");
-	#endif
-	*/
-
-	check_running_array(thread_number);	
-}
-
 // Called before a barrier, must wake-up all threads to avoid a deadlock
 void powercap_before_barrier(){
 
