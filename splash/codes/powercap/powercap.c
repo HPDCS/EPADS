@@ -1,8 +1,11 @@
+#define _GNU_SOURCE
+
 #include "powercap.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
 #include <signal.h>
+#include <sched.h>
 
 int set_pstate(int input_pstate){
 	
@@ -196,17 +199,15 @@ int pause_thread(int thread_id){
 void set_threads(int to_threads){
 
 	int i;
-	int starting_threads = active_threads;
 
-	if(starting_threads != to_threads){
-		if(starting_threads > to_threads){
-			for(i = to_threads; i<starting_threads; i++)
-				pause_thread(i);
-		}
-		else{
-			for(i = starting_threads; i<to_threads; i++)
-				wake_up_thread(i);
-		}
+	cpu_set_t cpu_set;       
+	CPU_ZERO(&cpu_set);
+	for(i=0; i<to_threads; i++){
+		CPU_SET(i, &cpu_set);
+	}
+
+	for(i = 0; i<total_threads;i++){
+		sched_setaffinity(pthread_ids[i], sizeof(cpu_set_t), &cpu_set); 
 	}
 }
 
@@ -454,9 +455,7 @@ void powercap_init(int threads){
 	}
 	
 	// Set active_threads to starting_threads
-	for(int i = starting_threads; i<total_threads;i++){
-		pause_thread(i);
-	}
+	set_threads(starting_threads);
 } 
 
 
@@ -487,7 +486,7 @@ void powercap_before_barrier(){
 	if(thread_number_init == 1 && thread_counter == total_threads && thread_number == 0 && active_threads!=total_threads) {
 		
 		#ifdef DEBUG_HEURISTICS
-			printf("Powercap_before_barrier - active_thread %d - pre_barrier_threads %d - running_token %d \n", active_threads, pre_barrier_threads, running_token);
+			printf("Powercap_before_barrier - active_thread %d\n", active_threads);
 		#endif
 			
 		// Next decision phase should be dropped
@@ -495,37 +494,14 @@ void powercap_before_barrier(){
 
 		// Dont consider next slot for power_limit error measurements
 		net_discard_barrier = 1;
-
-		// Save number of threads that should be restored after the barrier
-		pre_barrier_threads = active_threads;
-
-		// Set the running token, necessary in case of unlucky interleaving of operations  
-		running_token = 1;
-
-		// Wake up all threads
-		for(int i=active_threads; i< total_threads; i++){
-  			wake_up_thread(i);
-  		}
 	}
 }
 
 void powercap_after_barrier(){
 
-	if(thread_number_init == 1 && thread_number == 0 && pre_barrier_threads != 0 && active_threads!=pre_barrier_threads){
-		
-		#ifdef DEBUG_HEURISTICS
-			printf("Powercap_after_barrier - active_thread %d - pre_barrier_threads %d - running_token %d \n", active_threads, pre_barrier_threads, running_token);
-		#endif
-
-		// Unset the running token, necessary in case of unlucky interleaving of operations  
-		running_token = 0;
-		
-		#ifdef DEBUG_HEURISTICS
-			printf("Setting threads back to %d\n", pre_barrier_threads);
-		#endif
-
-		set_threads(pre_barrier_threads);
-	}
+	#ifdef DEBUG_HEURISTICS
+		printf("Powercap_after_barrier - active_thread %d\n", active_threads);
+	#endif
 }
 
 void powercap_before_cond_wait(){
@@ -534,15 +510,7 @@ void powercap_before_cond_wait(){
 		printf("powercap_before_cond_wait() called\n");
 	#endif
 
-	__atomic_fetch_add(&cond_waiters, 1, __ATOMIC_SEQ_CST);
-
-	// CARE: should probably rephrase. Still necessary to drop measurements
-	barrier_detected = 1;
-
-	// Wake up all threads
-	for(int i=active_threads; i < total_threads; i++){
-		force_wake_up_thread(i);
-	}
+	
 }
 
 void powercap_after_cond_wait(){
@@ -550,6 +518,4 @@ void powercap_after_cond_wait(){
 	#ifdef DEBUG_HEURISTICS
 		printf("powercap_after_cond_wait() called\n");
 	#endif
-
-	__atomic_fetch_add(&cond_waiters, -1, __ATOMIC_SEQ_CST);
 }
