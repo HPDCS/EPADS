@@ -6,7 +6,7 @@ define(NEWPROC,) dnl
 
 dnl Empty ROI markers
 define(SPLASH3_ROI_BEGIN, `')
-define(SPLASH3_ROI_END, `')
+define(SPLASH3_ROI_END, `powercap_print_stats();')
 dnl
 dnl Sniper ROI markers
 dnl define(SPLASH3_ROI_BEGIN, `SimRoiStart()')
@@ -41,13 +41,13 @@ define(BARINIT,
 define(LOCKDEC, `pthread_mutex_t $1;')
 define(LOCKINIT, `{pthread_mutex_init(&($1),NULL);}')
 define(LOCK, `{powercap_lock_taken(); pthread_mutex_lock(&($1));}')
-define(UNLOCK, `{pthread_mutex_unlock(&($1));}')
+define(UNLOCK, `{pthread_mutex_unlock(&($1));powercap_lock_release();}')
 
 define(ALOCKDEC, `pthread_mutex_t ($1)[$2];')
 define(ALOCKINIT, `{ int i; for(i = 0; i < ($2); i++) pthread_mutex_init(&(($1)[i]), NULL); }')
 define(ALOCK, `{powercap_lock_taken(); pthread_mutex_lock(&(($1)[($2)]));}')
 define(AGETL, `(($1)[$2])')
-define(AULOCK, `{pthread_mutex_unlock(&(($1)[($2)]));}')
+define(AULOCK, `{pthread_mutex_unlock(&(($1)[($2)]));powercap_lock_release();}')
 
 define(PAUSEDEC, `sem_t $1;')
 define(PAUSEINIT, `{sem_init(&($1),0,0);}')
@@ -57,7 +57,7 @@ define(WAITPAUSE, `{sem_wait(&($1));}')
 
 define(CONDVARDEC, `pthread_cond_t $1;')
 define(CONDVARINIT, `pthread_cond_init(&($1), NULL);')
-define(CONDVARWAIT,`{ powercap_before_cond_wait();printf("Condition mutex\n"); pthread_cond_wait(&($1), &($2)); powercap_after_cond_wait(); }')
+define(CONDVARWAIT,`{ powercap_before_cond_wait(); pthread_cond_wait(&($1), &($2)); powercap_after_cond_wait(); }')
 define(CONDVARSIGNAL,`{ pthread_cond_signal(&($1)); }')
 define(CONDVARBCAST,`{ pthread_cond_broadcast(&($1)); }')
 

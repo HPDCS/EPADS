@@ -88,14 +88,6 @@ int init_DVFS_management(){
 	return 0;
 }
 
-// SIGUSR1 handler
-void sig_func(int sig){
-	
-	#ifdef DEBUG_HEURISTICS
-		printf("Thread %d received SIGUSR1\n", thread_number);
-	#endif
-}
-
 // Executed inside stm_init
 void init_thread_management(int threads){
 
@@ -112,17 +104,7 @@ void init_thread_management(int threads){
 	#endif
 
 	active_threads = total_threads;
-
-	// Init running array with all threads running 	
-	running_array = malloc(sizeof(int)*total_threads);
-	for(i=0; i<total_threads; i++)
-		running_array[i] = 1;	
-
-	// Allocate memory for pthread_ids
 	pthread_ids = malloc(sizeof(pthread_t)*total_threads);
-
-	//Registering SIGUSR1 handler
-	signal(SIGUSR1, sig_func);
 
 	//init number of packages
 	filename = malloc(sizeof(char)*64); 
@@ -141,62 +123,13 @@ void init_thread_management(int threads){
 }
 
 
-void check_running_array(int threadId){
-	
-	while(cond_waiters == 0 && running_token == 0 && running_array[threadId] == 0){
-		#ifdef DEBUG_HEURISTICS
-			printf("Thread %d calling pause() - cond_waiters = %d - running_token = %d - running_array = %d\n", thread_number, cond_waiters, running_token, running_array[thread_number]);
-		#endif
-		pause();
-	}
-}
-
-// Used by the heuristics to tune the number of active threads 
-int wake_up_thread(int thread_id){
-	
-	if(running_array[thread_id] == 1){
-		printf("Waking up a thread already running\n");
-		return -1;
-	}
-	running_array[thread_id] = 1;
-	active_threads++;
-	pthread_kill(pthread_ids[thread_id], SIGUSR1);
-	return 0;
-}
-
-// Used to wake up thread even if with running_array equal to 0 
-int force_wake_up_thread(int thread_id){
-	
-	#ifdef DEBUG_HEURISTICS
-		if(running_array[thread_id] == 0){
-			printf("Forcing temporary wake-up of thread %d with running_array value %d\n", thread_id, running_array[thread_id]);
-		}
-	#endif
-
-	pthread_kill(pthread_ids[thread_id], SIGUSR1);
-	return 0;
-}
-
-
-// Used by the heuristics to tune the number of active threads 
-int pause_thread(int thread_id){
-
-	if(running_array[thread_id] == 0 ){
-		
-		#ifdef DEBUG_HEURISTICS
-			printf("Pausing a thread already paused\n");
-		#endif
-
-		return -1;
-	}
-
-	running_array[thread_id] = 0;
-	active_threads--;
-	return active_threads;
-}
-
 // Function used to set the number of running threads. Based on active_threads and threads might wake up or pause some threads 
 void set_threads(int to_threads){
+
+	if(to_threads < 1 || to_threads > total_threads){
+		printf("Setting threads to %d which is invalid for this system\n", to_threads);
+		exit(1);
+	}
 
 	int i;
 
@@ -206,9 +139,15 @@ void set_threads(int to_threads){
 		CPU_SET(i, &cpu_set);
 	}
 
-	for(i = 0; i<total_threads;i++){
-		sched_setaffinity(pthread_ids[i], sizeof(cpu_set_t), &cpu_set); 
+	for(i = 0; i < total_threads;i++){
+		pthread_setaffinity_np(pthread_ids[i], sizeof(cpu_set_t), &cpu_set); 
 	}
+
+	#ifdef DEBUG_HEURISTICS
+		printf("Setting threads to %d\n", to_threads);
+	#endif
+
+	active_threads = to_threads;
 }
 
 // Executed inside stm_init
@@ -236,12 +175,8 @@ stats_t* alloc_stats_buffer(int thread_number){
 
 	stats_ptr->total_commits = total_commits_round/active_threads;
 	stats_ptr->commits = 0;
-	stats_ptr->aborts = 0;
-	stats_ptr->nb_tx = 0;
 	stats_ptr->start_energy = 0;
-	stats_ptr->end_energy = 0;
 	stats_ptr->start_time = 0;
-	stats_ptr->end_time = 0;
 
 	stats_array[thread_number] = stats_ptr;
 
@@ -271,7 +206,7 @@ void load_config_file(){
   			printf("The parameter manual_pstate is set outside of the valid range for this CPU. Setting the CPU to the slowest frequency/voltage\n");
   	}else if(heuristic_mode == 12 || heuristic_mode == 13 || heuristic_mode == 15){
   		set_pstate(max_pstate);
-  		set_threads(1);
+  		starting_threads = 1;
   	}
 
 	fclose(config_file);
@@ -399,14 +334,13 @@ void powercap_init_thread(){
 	thread_number_init = 1;
 	int id = __atomic_fetch_add(&thread_counter, 1, __ATOMIC_SEQ_CST);
 	stats_ptr = alloc_stats_buffer(id);
+	
+	// Initialization of stats struct
+	stats_ptr->reset_bit = 0;
+	stats_ptr->total_commits = total_commits_round/total_threads;
+
 	thread_number = id;
 	pthread_ids[id]=pthread_self();
-
-	/*
-	#ifdef DEBUG_HEURISTICS
-		printf("Allocated thread %d with tid %lu\n", id, pthread_ids[id]);
-	#endif
-	*/
 
 	// Wait for all threads to get initialized
 	while(thread_counter != total_threads){}
@@ -419,11 +353,13 @@ void powercap_init_thread(){
 
 	// Thread 0 sets itself as a collector and inits global variables or init global variables if lock based
 	if( id == 0){
-		stats_ptr->collector = 1;
+		// Set active_threads to starting_threads
+		set_threads(starting_threads);
 		net_time_slot_start = get_time();
 		net_energy_slot_start = get_energy();
+		stats_ptr->start_time = net_time_slot_start;
+		stats_ptr->start_energy = net_energy_slot_start;
 	}
-
 }
 
 /////////////////////////////////////////////////////////////
@@ -453,9 +389,6 @@ void powercap_init(int threads){
 		printf("Starting threads set higher than total threads. Please modify this value in hope_config.txt\n");
 		exit(1);
 	}
-	
-	// Set active_threads to starting_threads
-	set_threads(starting_threads);
 } 
 
 
@@ -467,27 +400,97 @@ void powercap_lock_taken(){
 		powercap_init_thread();
 	}
 
-	/*
-	if(thread_number == 0)
-		printf("Lock counter: %ld\n", lock_counter++);
+	if(thread_number == 0 && stats_ptr->commits >= stats_ptr->total_commits){
 
-	#ifdef DEBUG_HEURISTICS
-		if(thread_number_init == 1 && thread_number == 0)
-				printf("Lock\n");
-	#endif
-	*/
-	
-	check_running_array(thread_number);	
+		//Aggregate data and set reset_bits to 1 for all threads
+		double throughput, power;	// Expressed as critical sections per second and Watts respectively
+		long end_time_slot, end_energy_slot, time_interval, energy_interval;
+
+		double commits_sum = 0;
+		end_time_slot = get_time();
+		end_energy_slot = get_energy();
+
+
+		for(int i=0; i<total_threads; i++){
+				if(stats_array[i]->reset_bit == 0){
+					commits_sum += stats_array[i]->commits;
+					stats_array[i]->reset_bit = 1;		
+				}
+		}
+
+		time_interval = end_time_slot - stats_ptr->start_time; //Expressed in nano seconds 
+		energy_interval = end_energy_slot - stats_ptr->start_energy; // Expressed in micro Joule
+		throughput = ((double) commits_sum) / (((double) time_interval)/ 1000000000);
+		power = ((double) energy_interval) / (((double) time_interval)/ 1000);
+
+		//Update counters for computing the powercap error with 1 second granularity
+		long slot_time_passed = end_time_slot - net_time_slot_start;
+
+		if(slot_time_passed > 1000000000){ //If higher than 1 second update the accumulator with the value of error compared to power_limit
+			if(net_discard_barrier == 0){
+				long slot_energy_consumed = end_energy_slot - net_energy_slot_start;
+				double slot_power = (((double) slot_energy_consumed)/ (((double) slot_time_passed)/1000));
+
+				double error_signed = slot_power - power_limit;
+				double error = 0;
+				if(error_signed > 0)
+					error = error_signed/power_limit*100;
+
+				// Add the error to the accumulator
+				net_error_accumulator = (net_error_accumulator*((double)net_time_accumulator)+error*((double)slot_time_passed))/( ((double)net_time_accumulator)+( (double) slot_time_passed));
+				net_time_accumulator+=slot_time_passed;
+			}else{
+				net_discard_barrier = 0;
+			}
+						
+			//Reset start counters
+			net_time_slot_start = end_time_slot;
+			net_energy_slot_start = end_energy_slot;
+		}
+
+		// Call heuristics if should not discard sampling
+		if(barrier_detected == 1){
+			barrier_detected = 0;
+		}
+		else{
+			// We don't call the heuristic if the energy results are out or range due to an overflow 
+			if(power > 0){
+				net_time_sum += time_interval;
+				net_energy_sum += energy_interval;
+				net_commits_sum += commits_sum;
+
+				// DEBUG
+				printf("Heuristic called - throughput: %lf - power: %lf Watt - time_interval %lf ms\n", throughput, power, ((double) time_interval)/1000000);
+				//heuristic(throughput, power, time_interval);
+				// END DEBUG
+			}
+		}
+
+		//Setup next round
+		stats_ptr->start_energy = get_energy();
+		stats_ptr->start_time = get_time();
+	}
+}
+
+// Function called after releasing a lock
+void powercap_lock_release(){
+
+	if(stats_ptr->reset_bit == 1){
+		stats_ptr->commits = 1;
+		stats_ptr-> reset_bit = 0;
+	} else{
+		stats_ptr->commits++;
+	}
 }
 
 // Called before a barrier, must wake-up all threads to avoid a deadlock
 void powercap_before_barrier(){
 
-	if(thread_number_init == 1 && thread_counter == total_threads && thread_number == 0 && active_threads!=total_threads) {
+	if(thread_number == 0 && thread_number_init == 1) {
 		
-		#ifdef DEBUG_HEURISTICS
+		/*#ifdef DEBUG_HEURISTICS
 			printf("Powercap_before_barrier - active_thread %d\n", active_threads);
-		#endif
+		#endif*/
 			
 		// Next decision phase should be dropped
 		barrier_detected = 1;
@@ -499,23 +502,47 @@ void powercap_before_barrier(){
 
 void powercap_after_barrier(){
 
-	#ifdef DEBUG_HEURISTICS
+	/*#ifdef DEBUG_HEURISTICS
 		printf("Powercap_after_barrier - active_thread %d\n", active_threads);
-	#endif
+	#endif*/
 }
 
 void powercap_before_cond_wait(){
 
+	if(thread_number == 0 && thread_number_init == 1) {
+			
+		// Next decision phase should be dropped
+		barrier_detected = 1;
+
+
+		// Dont consider next slot for power_limit error measurements
+		net_discard_barrier = 1;
+	}
+
+	/*
 	#ifdef DEBUG_HEURISTICS
 		printf("powercap_before_cond_wait() called\n");
 	#endif
-
-	
+	*/
 }
 
 void powercap_after_cond_wait(){
 	
-	#ifdef DEBUG_HEURISTICS
+	/*#ifdef DEBUG_HEURISTICS
 		printf("powercap_after_cond_wait() called\n");
-	#endif
+	#endif*/
 }
+
+void powercap_print_stats(){
+
+	#ifdef PRINT_STATS
+	  	double time_in_seconds = ( (double) net_time_sum) / 1000000000;
+	  	double net_throughput =  ( (double) net_commits_sum) / time_in_seconds;
+	  	double net_avg_power = ( (double) net_energy_sum) / (( (double) net_time_sum) / 1000);
+
+	  	printf("Application completed succesfully\n\n");
+	  	printf("Net_runtime: %lf\tNet_throughput: %lf\tNet_power: %lf\tNet_commits: %ld\tNet_error: %lf\n\n"
+			,time_in_seconds, net_throughput, net_avg_power, net_commits_sum, net_error_accumulator);
+
+  	#endif
+  }

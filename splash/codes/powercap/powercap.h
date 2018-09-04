@@ -11,8 +11,7 @@
 // GLOBAL VARIABLES
 ////////////////////////////////////////////////////////////////////////
 
-int* running_array;				// Array of integers that defines if a thread should be running
-pthread_t* pthread_ids;			// Array of pthread id's to be used with signals
+pthread_t* pthread_ids; // Array of pthread id's to be used with signals
 int total_threads;				// Total number of threads that could be used by the transcational operation 
 volatile int active_threads;	// Number of currently active threads, reflects the number of 1's in running_array
 int nb_cores; 					// Number of cores. Detected at startup and used to set DVFS parameters for all cores
@@ -83,11 +82,13 @@ static volatile __thread stats_t* stats_ptr;		// Pointer to stats struct for the
 ////////////////////////////////////////////////////////////////////////
 
 void powercap_lock_taken(void);
+void powercap_lock_release(void);
 void powercap_init(int);
 void powercap_before_barrier(void);
 void powercap_after_barrier(void);
 void powercap_before_cond_wait(void);
 void powercap_after_cond_wait(void);
+void powercap_print_stats(void);
 
 
 #endif
