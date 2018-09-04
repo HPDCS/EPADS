@@ -6,6 +6,7 @@
 #include <pthread.h>
 #include <unistd.h>
 #include <stdio.h>
+#include <math.h>
 
 ////////////////////////////////////////////////////////////////////////
 // GLOBAL VARIABLES
@@ -50,6 +51,35 @@ long net_time_accumulator;
 double net_error_accumulator; 
 long net_discard_barrier;
 
+// Variables necessary for the heuristics
+double old_throughput;			
+double old_power;			
+double old_abort_rate; 		
+double old_energy_per_tx;	
+double best_throughput;
+int current_exploit_steps;		// Current number of steps since the last completed exploration
+int best_threads;				
+int best_pstate;	
+double best_power;			
+double level_best_throughput; 
+int level_best_threads;
+int level_best_pstate;
+int level_starting_threads;
+int level_starting_energy_per_tx;
+int phase0_pstate;
+int phase0_threads;
+int new_pstate;					// Used to check if just arrived to a new p_state in the heuristic search
+int decreasing;					// If 0 heuristic should remove threads until it reaches the limit  
+int stopped_searching;			// While 1 the algorithm searches for the best configuration, if 0 the algorithm moves to monitoring mode 
+int phase;						// The value of phase has different semantics based on the running heuristic mode
+int min_pstate_search;
+int max_pstate_search;
+int min_thread_search;
+int max_thread_search;
+double min_thread_search_throughput;
+double max_thread_search_throughput;
+
+
 // Model-based variables
 // Matrices of predicted power consumption and throughput for different configurations. 
 // Rows are p-states, columns are threads. It has total_threads+1 column as first column is filled with 0s 
@@ -89,6 +119,10 @@ void powercap_after_barrier(void);
 void powercap_before_cond_wait(void);
 void powercap_after_cond_wait(void);
 void powercap_print_stats(void);
+
+// Functions used by heuristics
+void set_threads(int);
+int set_pstate(int);
 
 
 #endif

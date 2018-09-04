@@ -6,6 +6,7 @@
 #include <time.h>
 #include <signal.h>
 #include <sched.h>
+#include "heuristics.c"
 
 int set_pstate(int input_pstate){
 	
@@ -305,6 +306,47 @@ void init_global_variables(){
 	#ifdef DEBUG_HEURISTICS
 		printf("Initializing global variables\n");
 	#endif
+
+	round_completed=0;
+	old_throughput = -1;
+	old_power = -1;
+	old_energy_per_tx = -1;
+	level_best_throughput = -1; 
+	level_best_threads = 0;
+	level_starting_threads = starting_threads;
+	new_pstate = 1;
+	decreasing = 0;
+	stopped_searching = 0;
+	steps=0;
+	phase = 0; 
+	current_exploit_steps = 0;
+	barrier_detected = 0;
+	pre_barrier_threads = 0;
+
+	best_throughput = -1;
+	best_pstate = -1;
+	best_threads = -1;
+
+	net_time_sum = 0;
+    net_energy_sum = 0;
+    net_commits_sum = 0;
+	net_aborts_sum = 0;
+
+	net_time_slot_start= 0;
+	net_energy_slot_start= 0;
+    net_time_accumulator= 0;
+	net_error_accumulator= 0; 
+	net_discard_barrier= 0;
+
+	min_pstate_search = 0;
+	max_pstate_search = max_pstate;
+
+	min_thread_search = 1;
+	max_thread_search = total_threads;
+	min_thread_search_throughput = -1;
+	max_thread_search_throughput = -1;
+
+	validation_pstate = max_pstate-1;
 }
 
 
@@ -459,10 +501,7 @@ void powercap_lock_taken(){
 				net_energy_sum += energy_interval;
 				net_commits_sum += commits_sum;
 
-				// DEBUG
-				printf("Heuristic called - throughput: %lf - power: %lf Watt - time_interval %lf ms\n", throughput, power, ((double) time_interval)/1000000);
-				//heuristic(throughput, power, time_interval);
-				// END DEBUG
+				heuristic(throughput, power, time_interval);
 			}
 		}
 
