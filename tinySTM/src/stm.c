@@ -689,20 +689,37 @@ stm_exit(void)
 
   #ifdef NET_STATS
 
-  	double time_in_seconds = ( (double) net_time_sum) / 1000000000;
-  	double net_throughput =  ( (double) net_commits_sum) / time_in_seconds;
-  	double net_avg_power = ( (double) net_energy_sum) / (( (double) net_time_sum) / 1000);
+	extern char *__progname;
 
-  	printf("\tNet_runtime: %lf\tNet_throughput: %lf\tNet_power: %lf\tNet_commits: %ld\tNet_aborts: %ld\tNet_error: %lf"
-  			 ,time_in_seconds, net_throughput, net_avg_power, net_commits_sum, net_aborts_sum, net_error_accumulator);
+	char fileName[32];
 
-  #endif
+	if (heuristic_mode==8)
+		sprintf(fileName, "%s-%i-%i.txt", __progname, current_pstate, active_threads);
+	else 
+		sprintf(fileName, "%s-%i-%i.txt", __progname, heuristic_mode, (int)power_limit);
 
-  #ifdef STM_HOPE
-  	printf("\tP-state: %d\tBest-threads: %d\tSteps: %d", best_pstate, best_threads, steps);
-  #endif
+	printf ("\nWrinting stats to file: %s\n", fileName);
+	fflush(stdout);
+
+	FILE* fd = fopen(fileName, "a");
+	if(fd==NULL) {
+		printf("\nError opening output file. Exiting...\n");
+		exit(1);
+	}
 
 
+
+	double time_in_seconds = ( (double) net_time_sum) / 1000000000;
+	double net_throughput =  ( (double) net_commits_sum) / time_in_seconds;
+	double net_avg_power = ( (double) net_energy_sum) / (( (double) net_time_sum) / 1000);
+
+	fprintf(fd,"Net_runtime: %lf\tNet_throughput: %lf\tNet_power: %lf\tNet_commits: %ld\tNet_error: %lf\n",time_in_seconds, net_throughput, net_avg_power, net_commits_sum, net_error_accumulator);
+
+
+	fclose(fd);
+
+#endif
+	
 	#ifdef EPOCH_GC
   	gc_exit();
 	#endif /* EPOCH_GC */
