@@ -51,6 +51,8 @@ long effective_commits; 		// Number of commits during the phase managed by the h
 int detection_mode; 			// Defines the detection mode. Value 0 means detection is disabled. 1 restarts the exploration from the start. Detection mode 2 resets the execution after a given number of steps. Defined in hope_config.txt and loaded at startup 
 double detection_tp_threshold;	// Defines the percentage of throughput variation of the current optimal configuration compared to the results at the moment of convergece that should trigger a new exploration. Defined in hope_config.txt 
 double detection_pwr_threshold; // Defines the percentage of power consumption variation of the current optimal configuration compared to the results at the moment of convergece that should trigger a new exploration. Defined in hope_config.txt 
+int core_packing;				// 0-> threads scheduling, 1 -> core packing
+int lower_sampled_model_pstate;	// Define the lower sampled pstate to compute the model
 
 // Barrier detection variables
 int barrier_detected; 			// If set to 1 should drop current statistics round, had to wake up all threads in order to overcome a barrier 

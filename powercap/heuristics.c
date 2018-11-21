@@ -1318,7 +1318,7 @@ void compute_power_model(){
 	double alfa, beta, pwr_h, pwr_l, freq_h, freq_l, freq_i, freq3_h, freq3_l;
 	int i,j; 
 
-	freq_h = ((double) pstate[1])/1000;
+	freq_h = ((double) pstate[lower_sampled_model_pstate])/1000;
 	freq_l = ((double) pstate[max_pstate])/1000;
 
 	freq3_h = freq_h*freq_h*freq_h;
@@ -1327,7 +1327,7 @@ void compute_power_model(){
 	// Must compute specific model instance for each number of active threads
 	for(j = 1; j <= total_threads; j++){
 		
-		pwr_h = power_model[1][j] - power_uncore;
+		pwr_h = power_model[lower_sampled_model_pstate][j] - power_uncore;
 		pwr_l = power_model[max_pstate][j] - power_uncore;
 		
 		alfa = (pwr_l*freq_h - pwr_h*freq_l)/(freq_h*freq3_l - freq3_h*freq_l);
@@ -1339,7 +1339,8 @@ void compute_power_model(){
 				j, alfa, beta, power_uncore, pwr_h, pwr_l, freq_h, freq3_h);
 		#endif
 		
-		for(i = 2; i < max_pstate; i++){
+		for(i = 1; i < max_pstate; i++) {
+			if (i==lower_sampled_model_pstate) continue;
 			freq_i = ((double) pstate[i])/1000;
 			power_model[i][j] = alfa*freq_i*freq_i*freq_i+beta*freq_i+power_uncore; 
 		}
@@ -1364,8 +1365,8 @@ void compute_throughput_model(){
 
 	// Must compute specific model instance for each number of active threads
 	for(j = 1; j <= total_threads; j++){
-		speedup = throughput_model[1][j]/throughput_model[max_pstate][j];
-		c = (pstate[1]*(1-speedup))/(speedup*(pstate[max_pstate]-pstate[1]));
+		speedup = throughput_model[lower_sampled_model_pstate][j]/throughput_model[max_pstate][j];
+		c = (pstate[lower_sampled_model_pstate]*(1-speedup))/(speedup*(pstate[max_pstate]-pstate[lower_sampled_model_pstate]));
 		m = 1-c;
 
 		#ifdef DEBUG_HEURISTICS
@@ -1373,8 +1374,10 @@ void compute_throughput_model(){
 			printf("Threads = %d - C = %lf - M = %lf - speedup = %lf\n", j, c, m, speedup);
 		#endif
 		
-		for(i = 2; i < max_pstate; i++)
+		for(i = 1; i < max_pstate; i++) {
+			if (i==lower_sampled_model_pstate) continue;
 			throughput_model[i][j] = (1/(((double) pstate[max_pstate] * 1000)/((double) pstate[i] * 1000)*c+m))*throughput_model[max_pstate][j];
+		}
 		
 	}
 
@@ -1394,14 +1397,21 @@ void compute_throughput_model(){
 // require to sample power and performance of all configurations with P-state = 1 and P-state = max_pstate.
 // In the initial phase, the setup is performed. Consequently, the models are used to selects the best configuration
 // under the power cap based on their predictions. 
-void model_power_throughput(double throughput, double  abort_rate, double power, double energy_per_tx){
+void model_power_throughput(double throughput, double power){
 
 	int i, j;
 
 	power_model[current_pstate][active_threads] = power;
 	throughput_model[current_pstate][active_threads] = throughput;
 
-	if(active_threads == total_threads && current_pstate == 1){
+	if(current_pstate == max_pstate){
+		power_real[current_pstate][active_threads] = power;
+		throughput_real[current_pstate][active_threads] = throughput;
+		power_validation[current_pstate][active_threads] = power_model[current_pstate][active_threads];
+		throughput_validation[current_pstate][active_threads] = throughput_model[current_pstate][active_threads];
+	}
+
+	if(active_threads == total_threads && current_pstate == lower_sampled_model_pstate){
 		
 		compute_power_model();
 		compute_throughput_model();
@@ -1412,7 +1422,7 @@ void model_power_throughput(double throughput, double  abort_rate, double power,
 		best_throughput = throughput_model[max_pstate][1];
 
 		for(i = 1; i <= max_pstate; i++){
-			for(j = i; j <= total_threads; j++){
+			for(j = 1; j <= total_threads; j++){
 				if(power_model[i][j] < power_limit && throughput_model[i][j] > best_throughput){
 					best_pstate = i;
 					best_threads = j;
@@ -1428,11 +1438,21 @@ void model_power_throughput(double throughput, double  abort_rate, double power,
 		if(active_threads < total_threads)
 			set_threads(active_threads+1);
 		else{
-			set_pstate(1);
+			set_pstate(lower_sampled_model_pstate);
 			set_threads(1);
 		}
 	} 
 }
+
+char* subString (const char* input, int offset, int len, char* dest){
+	int input_len = strlen (input);
+	if (offset + len > input_len){
+     		return NULL;
+  	}
+	strncpy(dest, input + offset, len);
+  	return dest;
+}
+
 
 ///////////////////////////////////////////////////////////////
 // Main heuristic function
@@ -1515,7 +1535,7 @@ void model_power_throughput(double throughput, double  abort_rate, double power,
 					heuristic_two_step_stateful(throughput, abort_rate, power, energy_per_tx);
 					break;
 				case 15:
-					model_power_throughput(throughput, abort_rate, power, energy_per_tx);
+					model_power_throughput(throughput, power);
 					break;
 			}
 
@@ -1541,136 +1561,149 @@ void model_power_throughput(double throughput, double  abort_rate, double power,
 			else if(detection_mode == 3){
 				if(heuristic_mode == 15){
 				
-					// Copy sample data to compare models with real data
-					power_real[current_pstate][active_threads] = power;
-					throughput_real[current_pstate][active_threads] = throughput;
+				// Copy sample data to compare models with real data
+				power_real[current_pstate][active_threads] = power;
+				throughput_real[current_pstate][active_threads] = throughput;
 
-					// Copy to the validation array predictions from the model. Necessary as we perform multiple runs of the model
-					// to account for workload variability
-					power_validation[current_pstate][active_threads] = power_model[current_pstate][active_threads];
-					throughput_validation[current_pstate][active_threads] = throughput_model[current_pstate][active_threads];
-					
-					if(current_pstate == 2 && active_threads == total_threads){
-							
-						// Do not restart the exploration/model setup
-						detection_mode = 0;
-						double t;
-						// Print validation results to file
+				// Copy to the validation array predictions from the model. Necessary as we perform multiple runs of the model
+				// to account for workload variability
+				power_validation[current_pstate][active_threads] = power_model[current_pstate][active_threads];
+				throughput_validation[current_pstate][active_threads] = throughput_model[current_pstate][active_threads];
+				
+				if(current_pstate == 1 && active_threads == total_threads){
 
-						extern char *__progname;
-						char output_filename[32];
+					// Set validation for p-state equal to lower_sampled_model_pstate
+					for(int l = 1; l<total_threads; l++){
+						power_real[lower_sampled_model_pstate][l] = power_model[lower_sampled_model_pstate][l];
+						throughput_real[lower_sampled_model_pstate][l] = throughput_model[lower_sampled_model_pstate][l];
+						power_validation[lower_sampled_model_pstate][l] = power_model[lower_sampled_model_pstate][l];
+						throughput_validation[lower_sampled_model_pstate][l] = throughput_model[lower_sampled_model_pstate][l];
+					}
+				
+						
+					// Do not restart the exploration/model setup
+					detection_mode = 0;
+					double t;
+					// Print validation results to file
 
-						sprintf(output_filename, "%s-model_validation.txt", __progname);
-		
-						printf ("\nWriting model_validation data to file: %s\n", output_filename);
-						fflush(stdout);
+					extern char *__progname;
+					char output_filename[64];
 
-						FILE* model_validation_file = fopen(output_filename,"w+");
-						int i,j, total_confgurations_for_thr_mre=0, total_confgurations_for_pow_mre = 0;
-						double throughput_re, throughput_abs_re_sum=0;
-						double power_re, power_abs_re_sum=0;
-						// Write real, predicted and error for throughput to file
-						fprintf(model_validation_file, "Real throughput\n");
-						for(i = 2; i < max_pstate; i++){
-							for (j = 1; j <= total_threads; j++){
-								fprintf(model_validation_file, "%lf\t", throughput_real[i][j]);
-							}
-							fprintf(model_validation_file, "\n");
+					sprintf(output_filename, "%s-model_validation.txt", __progname);
+	
+					printf ("\nWriting model validation data to file: %s", output_filename);
+					fflush(stdout);
+
+					FILE* model_validation_file = fopen(output_filename,"w+");
+					int i,j, total_confgurations_for_thr_mre=0, total_confgurations_for_pow_mre = 0;
+					double throughput_re, throughput_abs_re_sum=0;
+					double power_re, power_abs_re_sum=0;
+					// Write real, predicted and error for throughput to file
+					fprintf(model_validation_file, "Real throughput\n");
+					for(i = 1; i <= max_pstate; i++){
+						for (j = 1; j <= total_threads; j++){
+							fprintf(model_validation_file, "%lf\t", throughput_real[i][j]);
 						}
 						fprintf(model_validation_file, "\n");
+					}
+					fprintf(model_validation_file, "\n");
 
-						fprintf(model_validation_file, "Predicted throughput\n");
-						for(i = 2; i < max_pstate; i++){
-							for (j = 1; j <= total_threads; j++){
-								fprintf(model_validation_file, "%lf\t", throughput_validation[i][j]);
-							}
-							fprintf(model_validation_file, "\n");
+					fprintf(model_validation_file, "Predicted throughput\n");
+					for(i = 1; i <= max_pstate; i++){
+						for (j = 1; j <= total_threads; j++){
+							fprintf(model_validation_file, "%lf\t", throughput_validation[i][j]);
 						}
 						fprintf(model_validation_file, "\n");
+					}
+					fprintf(model_validation_file, "\n");
 
-						fprintf(model_validation_file, "Throughput error percentage\n");
-						for(i = 2; i < max_pstate; i++){
-							for (j = 1; j <= total_threads; j++){
-								throughput_re=(throughput_validation[i][j]-throughput_real[i][j])/throughput_real[i][j];
-								fprintf(model_validation_file, "%lf\t", 100*throughput_re);
+					fprintf(model_validation_file, "Throughput error percentage\n");
+					for(i = 1; i <= max_pstate; i++){
+						for (j = 1; j <= total_threads; j++){
+							throughput_re=(throughput_validation[i][j]-throughput_real[i][j])/throughput_real[i][j];
+							fprintf(model_validation_file, "%lf\t", 100*throughput_re);
+							if (i!=lower_sampled_model_pstate && i!=max_pstate) {
 								throughput_abs_re_sum+=fabs(throughput_re);
 								total_confgurations_for_thr_mre++;							
-							}
-							fprintf(model_validation_file, "\n");
+							} 
 						}
 						fprintf(model_validation_file, "\n");
+					}
+					fprintf(model_validation_file, "\n");
 
-						// Write real, predicted and error for power to file
-						fprintf(model_validation_file, "Real power\n");
-						for(i = 2; i < max_pstate; i++){
-							for (j = 1; j <= total_threads; j++){
-								fprintf(model_validation_file, "%lf\t", power_real[i][j]);
-							}
-							fprintf(model_validation_file, "\n");
+					// Write real, predicted and error for power to file
+					fprintf(model_validation_file, "Real power\n");
+					for(i = 1; i <= max_pstate; i++){
+						for (j = 1; j <= total_threads; j++){
+							fprintf(model_validation_file, "%lf\t", power_real[i][j]);
 						}
 						fprintf(model_validation_file, "\n");
+					}
+					fprintf(model_validation_file, "\n");
 
-						fprintf(model_validation_file, "Predicted power\n");
-						for(i = 2; i < max_pstate; i++){
-							for (j = 1; j <= total_threads; j++){
-								fprintf(model_validation_file, "%lf\t", power_validation[i][j]);
-							}
-							fprintf(model_validation_file, "\n");
+					fprintf(model_validation_file, "Predicted power\n");
+					for(i = 1; i <= max_pstate; i++){
+						for (j = 1; j <= total_threads; j++){
+							fprintf(model_validation_file, "%lf\t", power_validation[i][j]);
 						}
 						fprintf(model_validation_file, "\n");
+					}
+					fprintf(model_validation_file, "\n");
 
-						fprintf(model_validation_file, "power error percentage\n");
-						for(i = 2; i < max_pstate; i++){						
-							for (j = 1; j <= total_threads; j++){
-								power_re=(power_validation[i][j]-power_real[i][j])/power_real[i][j];
-								fprintf(model_validation_file, "%lf\t", 100*power_re);
+					fprintf(model_validation_file, "power error percentage\n");
+					for(i = 1; i <= max_pstate; i++){						
+						for (j = 1; j <= total_threads; j++){
+							power_re=(power_validation[i][j]-power_real[i][j])/power_real[i][j];
+							fprintf(model_validation_file, "%lf\t", 100*power_re);
+							if (i!=lower_sampled_model_pstate && i!=max_pstate) {
 								power_abs_re_sum+=fabs(power_re);
 								total_confgurations_for_pow_mre++;
 							}
-							fprintf(model_validation_file, "\n");
 						}
 						fprintf(model_validation_file, "\n");
-						fclose(model_validation_file);
-
-						sprintf(output_filename, "%s-throughput_percent_mre.txt", __progname);
-
-						FILE* model_percent_mre = fopen(output_filename,"w+");
-							fprintf(model_percent_mre, "%lf\n", throughput_abs_re_sum/(double) total_confgurations_for_thr_mre*(double)100);
-						fclose(model_percent_mre);
-
-						sprintf(output_filename, "%s-power_percent_mre.txt", __progname);
-
-						FILE* power_percent_mre = fopen(output_filename,"w+");
-							fprintf(power_percent_mre, "%lf\n", power_abs_re_sum/(double) total_confgurations_for_pow_mre*(double)100);
-						fclose(model_percent_mre);
-
-
-
-						#ifdef DEBUG_HEURISTICS
-							printf("Model validation completed\n");
-							exit(0);
-						#endif
 					}
-					else if(active_threads == total_threads){ // Should restart the model 
+					fprintf(model_validation_file, "\n");
+					fclose(model_validation_file);
+
+					sprintf(output_filename, "%s-throughput_percent_mre.txt", __progname);
+					printf ("\nWriting model validation data to file: %s", output_filename);
+					fflush(stdout);
+					FILE* model_percent_mre = fopen(output_filename,"a");
+						fprintf(model_percent_mre, "%lf\n", throughput_abs_re_sum/(double) total_confgurations_for_thr_mre*(double)100);
+					fclose(model_percent_mre);
+
+					sprintf(output_filename, "%s-power_percent_mre.txt", __progname);
+					printf ("\nWriting model validation data to file: %s", output_filename);
+					fflush(stdout);
+					FILE* power_percent_mre = fopen(output_filename,"a");
+						fprintf(power_percent_mre, "%lf\n", power_abs_re_sum/(double) total_confgurations_for_pow_mre*(double)100);
+					fclose(model_percent_mre);
+
+					printf("\nModel validation completed\n");
+					exit(0);
+				}
+				else if(active_threads == total_threads){ // Should restart the model 
+					validation_pstate--;
+					if(validation_pstate == lower_sampled_model_pstate)
 						validation_pstate--;
-						stopped_searching = 0;
-						set_pstate(max_pstate);
-	  					set_threads(1);
-	  					best_throughput = -1;
-						best_threads = 1;
-						best_pstate = max_pstate;
+					stopped_searching = 0;
+					set_pstate(max_pstate);
+  					set_threads(1);
+  					best_throughput = -1;
+					best_threads = 1;
+					best_pstate = max_pstate;
 
-						#ifdef DEBUG_HEURISTICS
-							printf("Switched to: #threads %d - pstate %d\n", active_threads, current_pstate);
-						#endif 
-					}
-					else{ // Not yet finished current P-state, should increase threads
-						set_threads(active_threads+1);
+					#ifdef DEBUG_HEURISTICS
+						printf("Switched to: #threads %d - pstate %d\n", active_threads, current_pstate);
+					#endif 
+				}
+				else{ // Not yet finished current P-state, should increase threads
+					set_threads(active_threads+1);
 
-						#ifdef DEBUG_HEURISTICS
-							printf("Switched to: #threads %d - pstate %d\n", active_threads, current_pstate);
-						#endif 
-					}
+					#ifdef DEBUG_HEURISTICS
+						printf("Switched to: #threads %d - pstate %d\n", active_threads, current_pstate);
+					#endif 
+				}
 			}
 		} else if(detection_mode == 2){
 				if(current_pstate == 0 && heuristic_mode != 10 && power > (power_limit*(1+(hysteresis/100))) ){

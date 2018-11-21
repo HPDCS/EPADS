@@ -698,7 +698,7 @@ stm_exit(void)
 	else 
 		sprintf(fileName, "%s-%i-%i.txt", __progname, heuristic_mode, (int)power_limit);
 
-	printf ("\nWrinting stats to file: %s\n", fileName);
+	printf ("\nWriting stats to file: %s\n", fileName);
 	fflush(stdout);
 
 	FILE* fd = fopen(fileName, "a");
