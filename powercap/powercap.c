@@ -100,6 +100,7 @@
 
 
 	  	set_pstate(max_pstate);
+	  	set_boost(0);
 
 		return 0;
 	}
