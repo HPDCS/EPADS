@@ -1463,8 +1463,8 @@ char* subString (const char* input, int offset, int len, char* dest){
 	void heuristic(double throughput, double  abort_rate, double power, double energy_per_tx, long time){
 		
 		#ifdef DEBUG_HEURISTICS 
-			printf("Throughput: %lf - Abort rate: %lf percent - Power: %lf Watt - Energy per tx: %lf micro Joule\n",
-			         throughput, abort_rate, power, energy_per_tx);
+			printf("Throughput: %lf - Abort rate: %lf percent - Power: %lf Watt - Time: %lf microseconds\n",
+			         throughput, abort_rate, power, ((double) time/1000000));
 		#endif
 
 		#ifdef TIMELINE_PLOT
