@@ -11,6 +11,7 @@ echo "Started run_all_comparisons_stm"
 for cap in $CAPS 
 do
 	python hope_config_writer.py -power_limit $cap
+	python hope_config_writer.py -detection_mode 2
 
 	for mode in $MODES
 	do
@@ -22,11 +23,12 @@ do
 
 			python hope_config_writer.py -commits_round 5000
 			numactl --physcpubind=+0-$(( $THREADS-1 )) stamp/vacation/./vacation -n4 -q60 -u90 -r1048576 -t40194304 -c$THREADS     
-			numactl --physcpubind=+0-$(( $THREADS-1 )) stamp/intruder/./intruder -a10 -l128 -n262144 -s1 -t$THREADS
+			python hope_config_writer.py -commits_round 25000
+			numactl --physcpubind=+0-$(( $THREADS-1 )) stamp/intruder/./intruder -a10 -l512 -n642144 -s1 -t$THREADS
 			python hope_config_writer.py -commits_round 3000
-			numactl --physcpubind=+0-$(( $THREADS-1 )) stamp/genome/./genome -g56384 -s128 -n167772160 -t$THREADS
-			python hope_config_writer.py -commits_round 20000
-			numactl --physcpubind=+0-$(( $THREADS-1 )) stamp/ssca2/./ssca2 -s22 -i1.0 -u1.0 -l3 -p3 -t$THREADS
+			numactl --physcpubind=+0-$(( $THREADS-1 )) stamp/genome/./genome -g22238 -s1024 -n247772160 -t$THREADS
+			python hope_config_writer.py -commits_round 100000
+			numactl --physcpubind=+0-$(( $THREADS-1 )) stamp/ssca2/./ssca2 -s23 -i1.0 -u1.0 -l3 -p3 -t$THREADS
 		done
 	done
 done 
