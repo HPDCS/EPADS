@@ -24,7 +24,7 @@ do
 			python hope_config_writer.py -commits_round 5000
 			numactl --physcpubind=+0-$(( $THREADS-1 )) stamp/vacation/./vacation -n4 -q60 -u90 -r1048576 -t40194304 -c$THREADS     
 			python hope_config_writer.py -commits_round 18000
-			numactl --physcpubind=+0-$(( $THREADS-1 )) stamp/intruder/./intruder -a5 -l512 -n642144 -s1 -t$THREADS
+			numactl --physcpubind=+0-$(( $THREADS-1 )) stamp/intruder/./intruder -a10 -l128 -n2621440 -s1 -t$THREADS
 			python hope_config_writer.py -commits_round 1750
 			numactl --physcpubind=+0-$(( $THREADS-1 )) stamp/genome/./genome -g22238 -s1024 -n249772160 -t$THREADS
 			python hope_config_writer.py -commits_round 75000
