@@ -64,7 +64,7 @@ void stop_searching(){
 
 
     //Set High and Low for fluctuations when running the model
-    if(heuristic_mode == 15 && detection_mode == 2){
+    if((heuristic_mode == 15 || heuristic_mode == 16 || heuristic_mode == 13) && detection_mode == 2){
 
     	high_threads = best_threads;
     	low_threads = best_threads;
@@ -1453,6 +1453,10 @@ char* subString (const char* input, int offset, int len, char* dest){
   	return dest;
 }
 
+void baseline_enhanced(double throughput, double abort_rate, double power, double energy_per_tx){
+	heuristic_highest_threads(throughput, abort_rate, power, energy_per_tx);
+}
+
 
 ///////////////////////////////////////////////////////////////
 // Main heuristic function
@@ -1537,6 +1541,9 @@ char* subString (const char* input, int offset, int len, char* dest){
 				case 15:
 					model_power_throughput(throughput, power);
 					break;
+				case 16:
+					baseline_enhanced(throughput, abort_rate, power, energy_per_tx);
+					break;
 			}
 
 			if(!stopped_searching)
@@ -1547,7 +1554,7 @@ char* subString (const char* input, int offset, int len, char* dest){
 			#endif 
 		}
 		else{	// Workload change detection
-			if(detection_mode == 1 ){
+			if(detection_mode == 1){
 				if( throughput > (best_throughput*(1+(detection_tp_threshold/100))) || throughput < (best_throughput*(1-(detection_tp_threshold/100))) || power > (power_limit*(1+(detection_pwr_threshold/100))) || power < (power_limit*(1-(detection_pwr_threshold/100))) ){
 					stopped_searching = 0;
 					set_pstate(max_pstate);
@@ -1765,7 +1772,7 @@ char* subString (const char* input, int offset, int len, char* dest){
 				}
 
 				// Dynamic confiugration fluctuation used by dynamic_heuristic1
-				if((heuristic_mode == 10 || heuristic_mode == 15) && stopped_searching){
+				if((heuristic_mode == 10 || heuristic_mode == 15 || heuristic_mode == 13 || heuristic_mode == 16) && stopped_searching){
 
 					if(fluctuation_state == -1){
 						low_power = power;
